@@ -115,9 +115,7 @@ input:focus, select:focus{
 }
 .trow{border-top:1px solid rgba(255,255,255,.06);}
 
-.payHead{
-  grid-template-columns: 1fr 1fr 1fr 1fr;
-}
+.payHead{grid-template-columns: 1fr 1fr 1fr 1fr;}
 .payRow{
   display:grid;
   grid-template-columns: 1fr 1fr 1fr 1fr;
@@ -141,11 +139,7 @@ input:focus, select:focus{
   box-shadow: 0 0 0 3px rgba(255,122,122,.12) !important;
 }
 
-.plan{
-  display:flex;
-  flex-direction:column;
-  gap:10px;
-}
+.plan{display:flex; flex-direction:column; gap:10px;}
 .planRow{
   display:flex; justify-content:space-between; align-items:center; gap:12px;
   padding:10px 12px;
@@ -175,20 +169,11 @@ input:focus, select:focus{
   justify-content:space-between;
   gap:10px;
 }
-.profileCard .name{
-  font-weight:800;
-}
-.profileCard .meta{
-  font-size:12px;
-  color:var(--muted);
-}
+.profileCard .name{font-weight:800;}
+.profileCard .meta{font-size:12px; color:var(--muted);}
 
-/* Mostrar/Ocultar password */
-.passWrap{
-  display:flex;
-  gap:10px;
-  align-items:center;
-}
+/* Show/Hide pass */
+.passWrap{display:flex; gap:10px; align-items:center;}
 .passWrap input{flex:1;}
 .passBtn{white-space:nowrap;}
 

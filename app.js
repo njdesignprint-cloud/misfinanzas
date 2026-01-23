@@ -1,4 +1,77 @@
 /***********************
+ * Utils (anti-crash)
+ ***********************/
+const $ = (id) => document.getElementById(id);
+const on = (el, evt, fn) => { if (el) el.addEventListener(evt, fn); };
+const setText = (el, txt) => { if (el) el.textContent = txt; };
+const toggleHidden = (el, hidden) => { if (el) el.classList.toggle("hidden", hidden); };
+
+function uid() {
+  return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+}
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0,0,0,0);
+  return x;
+}
+function toISODate(d) {
+  const x = new Date(d);
+  const yyyy = x.getFullYear();
+  const mm = String(x.getMonth() + 1).padStart(2, "0");
+  const dd = String(x.getDate()).padStart(2, "0");
+  return `${yyyy}-${mm}-${dd}`;
+}
+function parseNumber(v) {
+  const cleaned = String(v ?? "").replace(/,/g, "").trim();
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
+}
+function hasValue(str) {
+  return String(str ?? "").trim().length > 0;
+}
+function fmtMoney(n) {
+  const v = Number.isFinite(n) ? n : 0;
+  return v.toLocaleString(undefined, { style: "currency", currency: "USD" });
+}
+function fmtDate(d) {
+  return new Intl.DateTimeFormat("es-US", { year:"numeric", month:"short", day:"2-digit" }).format(d);
+}
+function addDays(date, days) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d;
+}
+function addMonths(date, months) {
+  const d = new Date(date);
+  const day = d.getDate();
+  d.setMonth(d.getMonth() + months);
+  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
+  if (day > lastDay) d.setDate(lastDay);
+  return d;
+}
+function addYears(date, years) {
+  const d = new Date(date);
+  d.setFullYear(d.getFullYear() + years);
+  return d;
+}
+function clampDayOfMonth(year, monthIndex, day) {
+  const last = new Date(year, monthIndex + 1, 0).getDate();
+  return Math.min(Math.max(1, day), last);
+}
+function makeMonthlyDateNear(year, monthIndex, monthDay) {
+  const d = clampDayOfMonth(year, monthIndex, monthDay);
+  return startOfDay(new Date(year, monthIndex, d));
+}
+function escapeHtml(s) {
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
+/***********************
  * Firebase Config (TU PROYECTO)
  ***********************/
 const firebaseConfig = {
@@ -10,6 +83,13 @@ const firebaseConfig = {
   appId: "1:998483559442:web:435dced19e19a884b984cb",
   measurementId: "G-ZBVLVMQKDJ"
 };
+
+// Si Firebase scripts no cargaron, muestro error visible
+if (!window.firebase) {
+  const msg = $("authMsg");
+  if (msg) msg.textContent = "ERROR: Firebase no cargó. Revisa que index.html tenga los 3 scripts de Firebase antes de app.js.";
+  throw new Error("Firebase not loaded");
+}
 
 // Init Firebase (evita doble init)
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
@@ -27,13 +107,11 @@ const BILL_FREQ = [
 ];
 
 const PAY_TYPES = {
-  weekly:   { label: "Semanal",          mode: "days",  step: 7 },
-  "15days": { label: "Cada 15 días",     mode: "days",  step: 15 },
-  biweekly: { label: "Quincenal (14)",   mode: "days",  step: 14 },
+  weekly:   { label: "Semanal",          mode: "days",   step: 7 },
+  "15days": { label: "Cada 15 días",     mode: "days",   step: 15 },
+  biweekly: { label: "Quincenal (14)",   mode: "days",   step: 14 },
   monthly:  { label: "Mensual",          mode: "months", step: 1 },
 };
-
-const $ = (id) => document.getElementById(id);
 
 /***********************
  * Elements
@@ -92,122 +170,23 @@ let currentProfileId = null;
 let state = null;
 
 /***********************
- * Helpers
+ * Views
  ***********************/
-function uid() {
-  return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
-}
-function startOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0,0,0,0);
-  return x;
-}
-function toISODate(d) {
-  const x = new Date(d);
-  const yyyy = x.getFullYear();
-  const mm = String(x.getMonth() + 1).padStart(2, "0");
-  const dd = String(x.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
-}
-function parseNumber(v) {
-  const cleaned = String(v ?? "").replace(/,/g, "").trim();
-  const n = Number(cleaned);
-  return Number.isFinite(n) ? n : 0;
-}
-function hasValue(str) {
-  return String(str ?? "").trim().length > 0;
-}
-function fmtMoney(n) {
-  const v = Number.isFinite(n) ? n : 0;
-  return v.toLocaleString(undefined, { style: "currency", currency: "USD" });
-}
-function fmtDate(d) {
-  return new Intl.DateTimeFormat("es-US", { year:"numeric", month:"short", day:"2-digit" }).format(d);
-}
-function addDays(date, days) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-function addMonths(date, months) {
-  const d = new Date(date);
-  const day = d.getDate();
-  d.setMonth(d.getMonth() + months);
-  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  if (day > lastDay) d.setDate(lastDay);
-  return d;
-}
-function addYears(date, years) {
-  const d = new Date(date);
-  d.setFullYear(d.getFullYear() + years);
-  return d;
-}
-function clampDayOfMonth(year, monthIndex, day) {
-  const last = new Date(year, monthIndex + 1, 0).getDate();
-  return Math.min(Math.max(1, day), last);
-}
-function makeMonthlyDateNear(year, monthIndex, monthDay) {
-  const d = clampDayOfMonth(year, monthIndex, monthDay);
-  return startOfDay(new Date(year, monthIndex, d));
-}
-
-function advanceDueDate(dueDateStr, freqId, refDate) {
-  let due = startOfDay(new Date(dueDateStr));
-  if (Number.isNaN(due.getTime())) return null;
-
-  const f = BILL_FREQ.find(x => x.id === freqId) || BILL_FREQ[0];
-  for (let i=0; i<80; i++) {
-    if (due >= refDate) return due;
-    if (f.type === "days") due = startOfDay(addDays(due, f.step));
-    if (f.type === "months") due = startOfDay(addMonths(due, f.step));
-    if (f.type === "years") due = startOfDay(addYears(due, f.step));
-  }
-  return due;
+function show(view) {
+  toggleHidden(els.authView, view !== "auth");
+  toggleHidden(els.profileView, view !== "profiles");
+  toggleHidden(els.appView, view !== "app");
+  toggleHidden(els.btnLogout, view === "auth");
 }
 
 /***********************
- * Salary schedule logic
+ * Firestore paths
  ***********************/
-function computeNextPayDateBySchedule(schedule, lastPayDateStr) {
-  const today = startOfDay(new Date());
-  const payType = schedule?.type || "15days";
-  const def = PAY_TYPES[payType] || PAY_TYPES["15days"];
-
-  if (def.mode === "days") {
-    if (!lastPayDateStr) return null;
-    let d = startOfDay(new Date(lastPayDateStr));
-    if (Number.isNaN(d.getTime())) return null;
-    for (let i=0; i<800; i++) {
-      if (d >= today) return d;
-      d = startOfDay(addDays(d, def.step));
-    }
-    return d;
-  }
-
-  // monthly
-  const monthDay = Number(schedule?.monthDay) || (lastPayDateStr ? new Date(lastPayDateStr).getDate() : 1);
-  const now = new Date();
-  const cur = makeMonthlyDateNear(now.getFullYear(), now.getMonth(), monthDay);
-  if (cur >= today) return cur;
-  const nxt = addMonths(cur, 1);
-  return startOfDay(nxt);
+function profilesColRef(uid) {
+  return db.collection("users").doc(uid).collection("profiles");
 }
-
-function generatePayDates(schedule, lastPayDateStr, count = 8) {
-  const out = [];
-  const next = computeNextPayDateBySchedule(schedule, lastPayDateStr);
-  if (!next) return out;
-
-  const payType = schedule?.type || "15days";
-  const def = PAY_TYPES[payType] || PAY_TYPES["15days"];
-
-  let d = startOfDay(next);
-  for (let i=0; i<count; i++) {
-    out.push(startOfDay(d));
-    if (def.mode === "days") d = startOfDay(addDays(d, def.step));
-    else d = startOfDay(addMonths(d, def.step));
-  }
-  return out;
+function profileDocRef(uid, profileId) {
+  return profilesColRef(uid).doc(profileId);
 }
 
 /***********************
@@ -227,11 +206,11 @@ function defaultExpensesList() {
   ];
 }
 
-function defaultProfileState(profileId, displayName, payType = "15days", lastPayDate = "2026-01-09", monthDay = 9) {
+function defaultProfileState(profileId, displayName, payType="15days", lastPayDate="2026-01-09", monthDay=9) {
   return {
     profileId,
     displayName: displayName || "Perfil",
-    paySchedule: { type: payType, monthDay: monthDay || 1 },
+    paySchedule: { type: payType, monthDay: Number(monthDay) || 1 },
     lastPayDate: lastPayDate || "",
     paychecks: {}, // {"YYYY-MM-DD": "1200"}
     expenses: defaultExpensesList(),
@@ -240,13 +219,62 @@ function defaultProfileState(profileId, displayName, payType = "15days", lastPay
 }
 
 /***********************
- * Firestore paths
+ * Salary schedule
  ***********************/
-function profilesColRef(uid) {
-  return db.collection("users").doc(uid).collection("profiles");
+function computeNextPayDateBySchedule(schedule, lastPayDateStr) {
+  const today = startOfDay(new Date());
+  const payType = schedule?.type || "15days";
+  const def = PAY_TYPES[payType] || PAY_TYPES["15days"];
+
+  if (def.mode === "days") {
+    if (!lastPayDateStr) return null;
+    let d = startOfDay(new Date(lastPayDateStr));
+    if (Number.isNaN(d.getTime())) return null;
+    for (let i=0; i<800; i++) {
+      if (d >= today) return d;
+      d = startOfDay(addDays(d, def.step));
+    }
+    return d;
+  }
+
+  const monthDay = Number(schedule?.monthDay) || (lastPayDateStr ? new Date(lastPayDateStr).getDate() : 1);
+  const now = new Date();
+  const cur = makeMonthlyDateNear(now.getFullYear(), now.getMonth(), monthDay);
+  if (cur >= today) return cur;
+  return startOfDay(addMonths(cur, 1));
 }
-function profileDocRef(uid, profileId) {
-  return profilesColRef(uid).doc(profileId);
+
+function generatePayDates(schedule, lastPayDateStr, count = 8) {
+  const out = [];
+  const next = computeNextPayDateBySchedule(schedule, lastPayDateStr);
+  if (!next) return out;
+
+  const payType = schedule?.type || "15days";
+  const def = PAY_TYPES[payType] || PAY_TYPES["15days"];
+
+  let d = startOfDay(next);
+  for (let i=0; i<count; i++) {
+    out.push(startOfDay(d));
+    d = def.mode === "days" ? startOfDay(addDays(d, def.step)) : startOfDay(addMonths(d, def.step));
+  }
+  return out;
+}
+
+/***********************
+ * Bills schedule
+ ***********************/
+function advanceDueDate(dueDateStr, freqId, refDate) {
+  let due = startOfDay(new Date(dueDateStr));
+  if (Number.isNaN(due.getTime())) return null;
+
+  const f = BILL_FREQ.find(x => x.id === freqId) || BILL_FREQ[0];
+  for (let i=0; i<80; i++) {
+    if (due >= refDate) return due;
+    if (f.type === "days") due = startOfDay(addDays(due, f.step));
+    if (f.type === "months") due = startOfDay(addMonths(due, f.step));
+    if (f.type === "years") due = startOfDay(addYears(due, f.step));
+  }
+  return due;
 }
 
 /***********************
@@ -261,11 +289,8 @@ async function ensureDefaultProfiles(uid) {
   const existing = await listProfilesFromCloud(uid);
   if (existing.length > 0) return;
 
-  const noel = defaultProfileState("noel", "Noel", "15days", "2026-01-09", 9);
-  const jen  = defaultProfileState("jenniffer", "Jenniffer", "weekly", "", 1);
-
-  await profileDocRef(uid, "noel").set(noel, { merge: true });
-  await profileDocRef(uid, "jenniffer").set(jen, { merge: true });
+  await profileDocRef(uid, "noel").set(defaultProfileState("noel", "Noel", "15days", "2026-01-09", 9), { merge: true });
+  await profileDocRef(uid, "jenniffer").set(defaultProfileState("jenniffer", "Jenniffer", "weekly", "", 1), { merge: true });
 }
 
 async function loadProfile(uid, profileId) {
@@ -279,7 +304,6 @@ async function loadProfile(uid, profileId) {
   }
 
   const data = snap.data() || {};
-  // Normaliza campos por si faltan
   const schedule = data.paySchedule || { type: data.payType || "15days", monthDay: data.monthDay || 1 };
 
   return {
@@ -307,9 +331,9 @@ function saveToCloudDebounced() {
       if (!currentUser || !currentProfileId || !state) return;
       state.updatedAt = new Date().toISOString();
       await profileDocRef(currentUser.uid, currentProfileId).set(state, { merge: true });
-      els.cloudMsg.textContent = `Guardado en la nube: ${new Date().toLocaleTimeString()}`;
-    } catch (e) {
-      els.cloudMsg.textContent = "No pude guardar (revisa Rules / dominio / login).";
+      setText(els.cloudMsg, `Guardado en la nube: ${new Date().toLocaleTimeString()}`);
+    } catch {
+      setText(els.cloudMsg, "No pude guardar (revisa Rules / dominio / login).");
     }
   }, 250);
 }
@@ -330,7 +354,6 @@ function compute(state) {
     return { ...e, amountNum, due, valid, urgent };
   });
 
-  // Apartar en el próximo cobro por gasto
   const perNextPay = new Map();
   let urgentTotal = 0;
   let nextSaveTotal = 0;
@@ -351,11 +374,9 @@ function compute(state) {
     }
   }
 
-  // Plan por cada cobro (8)
   const plan = [];
   if (nextPay) {
     const sim = expenses.map(ex => ({
-      id: ex.id,
       freqId: ex.freqId,
       amount: ex.amountNum,
       due: ex.due ? new Date(ex.due) : null,
@@ -390,7 +411,6 @@ function compute(state) {
     }
   }
 
-  // Libre del próximo cobro (si hay monto)
   let free = null;
   if (nextPay) {
     const key = toISODate(nextPay);
@@ -402,31 +422,21 @@ function compute(state) {
 }
 
 /***********************
- * UI helpers
+ * UI builders
  ***********************/
-function show(view) {
-  els.authView.classList.toggle("hidden", view !== "auth");
-  els.profileView.classList.toggle("hidden", view !== "profiles");
-  els.appView.classList.toggle("hidden", view !== "app");
-  els.btnLogout.classList.toggle("hidden", view === "auth");
-}
-
 function setMonthlyVisibility(selectEl, wrapEl) {
-  const isMonthly = selectEl.value === "monthly";
-  wrapEl.classList.toggle("hidden", !isMonthly);
+  if (!selectEl || !wrapEl) return;
+  wrapEl.classList.toggle("hidden", selectEl.value !== "monthly");
 }
 
 function findRowById(container, id) {
-  const kids = container.children;
-  for (let i=0; i<kids.length; i++) {
-    if (kids[i].dataset.id === id) return kids[i];
+  if (!container) return null;
+  for (const ch of container.children) {
+    if (ch.dataset?.id === id) return ch;
   }
   return null;
 }
 
-/***********************
- * Expenses UI
- ***********************/
 function createExpenseRow(expense) {
   const row = document.createElement("div");
   row.className = "trow";
@@ -459,19 +469,19 @@ function createExpenseRow(expense) {
     `<option value="${f.id}" ${f.id === expense.freqId ? "selected" : ""}>${f.label}</option>`
   ).join("");
 
-  // NO re-render mientras escribes (corrige bug de 1 número)
-  nameEl.addEventListener("input", () => updateExpense(expense.id, { name: nameEl.value }, false));
-  amountEl.addEventListener("input", () => updateExpense(expense.id, { amount: amountEl.value }, false));
+  // NO re-render mientras tecleas
+  on(nameEl, "input", () => updateExpense(expense.id, { name: nameEl.value }, false));
+  on(amountEl, "input", () => updateExpense(expense.id, { amount: amountEl.value }, false));
 
-  freqEl.addEventListener("change", () => updateExpense(expense.id, { freqId: freqEl.value }, true));
-  dueEl.addEventListener("change", () => updateExpense(expense.id, { dueDate: dueEl.value }, true));
-
-  delEl.addEventListener("click", () => deleteExpense(expense.id));
+  on(freqEl, "change", () => updateExpense(expense.id, { freqId: freqEl.value }, true));
+  on(dueEl, "change", () => updateExpense(expense.id, { dueDate: dueEl.value }, true));
+  on(delEl, "click", () => deleteExpense(expense.id));
 
   return row;
 }
 
 function rebuildExpensesTable() {
+  if (!els.rows) return;
   els.rows.innerHTML = "";
   for (const ex of state.expenses) els.rows.appendChild(createExpenseRow(ex));
 }
@@ -479,8 +489,7 @@ function rebuildExpensesTable() {
 function updateExpense(id, patch, fullRefresh) {
   state.expenses = state.expenses.map(e => (e.id === id ? { ...e, ...patch } : e));
   saveToCloudDebounced();
-  if (fullRefresh) refreshAll();
-  else refreshCalculationsOnly();
+  fullRefresh ? refreshAll() : refreshCalculationsOnly();
 }
 
 function deleteExpense(id) {
@@ -491,11 +500,10 @@ function deleteExpense(id) {
   refreshAll();
 }
 
-/***********************
- * Paychecks UI (monto por cobro)
- ***********************/
 function rebuildPaychecksTable(plan, payDates) {
+  if (!els.payRows) return;
   els.payRows.innerHTML = "";
+
   const mapPlan = new Map(plan.map(p => [toISODate(p.date), p.total]));
 
   for (const d of payDates) {
@@ -516,10 +524,9 @@ function rebuildPaychecksTable(plan, payDates) {
 
     const amtEl = row.querySelector(".payAmt");
     const freeEl = row.querySelector(".free");
-
     amtEl.value = amountStr;
 
-    function updateFreeInline() {
+    const updateFreeInline = () => {
       if (!hasValue(amtEl.value)) {
         freeEl.textContent = "—";
         freeEl.className = "right strong free muted";
@@ -528,20 +535,18 @@ function rebuildPaychecksTable(plan, payDates) {
       const free = parseNumber(amtEl.value) - recommended;
       freeEl.textContent = fmtMoney(free);
       freeEl.className = "right strong free " + (free >= 0 ? "ok" : "bad");
-    }
+    };
 
-    // Guardar en la nube SIN re-render mientras tecleas
-    amtEl.addEventListener("input", () => {
+    on(amtEl, "input", () => {
       state.paychecks[key] = amtEl.value;
       saveToCloudDebounced();
       updateFreeInline();
 
-      // Si este key es el próximo cobro, actualiza la tarjeta "Libre"
       const next = computeNextPayDateBySchedule(state.paySchedule, state.lastPayDate);
       if (next && toISODate(next) === key) {
-        const free = parseNumber(amtEl.value) - recommended;
-        els.free.textContent = hasValue(amtEl.value) ? fmtMoney(free) : "—";
-        els.free.className = "strong " + (hasValue(amtEl.value) ? (free >= 0 ? "ok" : "bad") : "muted");
+        const f = parseNumber(amtEl.value) - recommended;
+        setText(els.free, hasValue(amtEl.value) ? fmtMoney(f) : "—");
+        if (els.free) els.free.className = "strong " + (hasValue(amtEl.value) ? (f >= 0 ? "ok" : "bad") : "muted");
       }
     });
 
@@ -550,17 +555,13 @@ function rebuildPaychecksTable(plan, payDates) {
   }
 }
 
-/***********************
- * Refresh / render
- ***********************/
 function refreshHeaderInputs() {
-  els.whoTitle.textContent = `Perfil: ${state.displayName}`;
-
-  els.payType.value = state.paySchedule?.type || "15days";
-  els.lastPayDate.value = state.lastPayDate ?? "";
+  setText(els.whoTitle, `Perfil: ${state.displayName}`);
+  if (els.payType) els.payType.value = state.paySchedule?.type || "15days";
+  if (els.lastPayDate) els.lastPayDate.value = state.lastPayDate ?? "";
 
   const md = Number(state.paySchedule?.monthDay) || (state.lastPayDate ? new Date(state.lastPayDate).getDate() : 1);
-  els.monthDay.value = String(md);
+  if (els.monthDay) els.monthDay.value = String(md);
 
   setMonthlyVisibility(els.payType, els.monthDayWrap);
 }
@@ -568,41 +569,41 @@ function refreshHeaderInputs() {
 function refreshCalculationsOnly() {
   const c = compute(state);
 
-  els.nextPayDate.value = c.nextPay ? fmtDate(c.nextPay) : "— pon tu último cobro";
-  els.urgent.textContent = fmtMoney(c.urgentTotal);
-  els.nextSave.textContent = fmtMoney(c.nextSaveTotal);
+  if (els.nextPayDate) els.nextPayDate.value = c.nextPay ? fmtDate(c.nextPay) : "— pon tu último cobro";
+  setText(els.urgent, fmtMoney(c.urgentTotal));
+  setText(els.nextSave, fmtMoney(c.nextSaveTotal));
 
   if (!c.nextPay) {
-    els.free.textContent = "—";
-    els.free.className = "strong muted";
+    setText(els.free, "—");
+    if (els.free) els.free.className = "strong muted";
   } else {
     const key = toISODate(c.nextPay);
     const amt = state.paychecks?.[key];
     if (!hasValue(amt)) {
-      els.free.textContent = "—";
-      els.free.className = "strong muted";
+      setText(els.free, "—");
+      if (els.free) els.free.className = "strong muted";
     } else {
-      const free = parseNumber(amt) - (c.plan[0]?.total || 0);
-      els.free.textContent = fmtMoney(free);
-      els.free.className = "strong " + (free >= 0 ? "ok" : "bad");
+      const f = parseNumber(amt) - (c.plan[0]?.total || 0);
+      setText(els.free, fmtMoney(f));
+      if (els.free) els.free.className = "strong " + (f >= 0 ? "ok" : "bad");
     }
   }
 
-  // Per expense: apartar próximo cobro
+  // Per expense
   for (const ex of c.expenses) {
     const row = findRowById(els.rows, ex.id);
     if (!row) continue;
 
-    row.querySelector(".perPay").textContent = fmtMoney(c.perNextPay.get(ex.id) || 0);
+    const per = row.querySelector(".perPay");
+    if (per) per.textContent = fmtMoney(c.perNextPay.get(ex.id) || 0);
 
     const badges = row.querySelector(".badges");
-    badges.innerHTML = "";
+    if (badges) badges.innerHTML = "";
 
     const dueInput = row.querySelector(".due");
-    if (!ex.due) dueInput.classList.add("warn");
-    else dueInput.classList.remove("warn");
+    if (dueInput) dueInput.classList.toggle("warn", !ex.due);
 
-    if (ex.urgent > 0 && c.nextPay) {
+    if (ex.urgent > 0 && c.nextPay && badges) {
       const b = document.createElement("div");
       b.className = "tag";
       b.textContent = `⚠ Urgente: ${fmtMoney(ex.urgent)}`;
@@ -610,7 +611,8 @@ function refreshCalculationsOnly() {
     }
   }
 
-  // Plan list
+  // Plan
+  if (!els.plan) return;
   if (!c.nextPay) {
     els.plan.innerHTML = `<div class="planRow"><span class="muted">Define “Último cobro” para ver el plan.</span><span class="muted">—</span></div>`;
   } else {
@@ -622,7 +624,6 @@ function refreshCalculationsOnly() {
     `).join("");
   }
 
-  // Paychecks table
   rebuildPaychecksTable(c.plan, c.payDates);
 }
 
@@ -632,7 +633,7 @@ function refreshAll() {
 }
 
 /***********************
- * Profiles UI
+ * Profiles
  ***********************/
 function profileCardHTML(p) {
   const name = p.displayName || p.id;
@@ -643,40 +644,33 @@ function profileCardHTML(p) {
       <div class="row">
         <div>
           <div class="name">${escapeHtml(name)}</div>
-          <div class="meta">${label}</div>
+          <div class="meta">${escapeHtml(label)}</div>
         </div>
-        <button class="btn" data-open="${p.id}" type="button">Abrir</button>
+        <button class="btn" data-open="${escapeHtml(p.id)}" type="button">Abrir</button>
       </div>
     </div>
   `;
 }
 
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
 async function refreshProfilesList() {
   if (!currentUser) return;
-  els.profilesMsg.textContent = "Cargando perfiles…";
+  setText(els.profilesMsg, "Cargando perfiles…");
 
-  await ensureDefaultProfiles(currentUser.uid);
-  const profiles = await listProfilesFromCloud(currentUser.uid);
+  try {
+    await ensureDefaultProfiles(currentUser.uid);
+    const profiles = await listProfilesFromCloud(currentUser.uid);
 
-  els.profilesList.innerHTML = profiles.map(profileCardHTML).join("");
+    if (els.profilesList) {
+      els.profilesList.innerHTML = profiles.map(profileCardHTML).join("");
+      els.profilesList.querySelectorAll("[data-open]").forEach(btn => {
+        on(btn, "click", async () => openProfile(btn.getAttribute("data-open")));
+      });
+    }
 
-  // bind open buttons
-  els.profilesList.querySelectorAll("[data-open]").forEach(btn => {
-    btn.addEventListener("click", async () => {
-      await openProfile(btn.getAttribute("data-open"));
-    });
-  });
-
-  els.profilesMsg.textContent = profiles.length ? "" : "No hay perfiles.";
+    setText(els.profilesMsg, profiles.length ? "" : "No hay perfiles.");
+  } catch (e) {
+    setText(els.profilesMsg, "No pude cargar perfiles (revisa Rules de Firestore).");
+  }
 }
 
 function slugifyName(name) {
@@ -689,45 +683,40 @@ function slugifyName(name) {
 }
 
 async function createProfile() {
-  const name = els.newProfileName.value.trim();
+  const name = (els.newProfileName?.value || "").trim();
   if (!name) {
-    els.profilesMsg.textContent = "Escribe un nombre para el perfil.";
+    setText(els.profilesMsg, "Escribe un nombre para el perfil.");
     return;
   }
 
-  const payType = els.newPayType.value;
-  const lastPay = els.newLastPayDate.value || "";
-  const md = Number(els.newMonthDay.value) || (lastPay ? new Date(lastPay).getDate() : 1);
+  const payType = els.newPayType?.value || "15days";
+  const lastPay = els.newLastPayDate?.value || "";
+  const md = Number(els.newMonthDay?.value) || (lastPay ? new Date(lastPay).getDate() : 1);
 
   const baseId = slugifyName(name);
   let profileId = baseId;
 
-  // Evita choque de ids
   const existing = await listProfilesFromCloud(currentUser.uid);
   const setIds = new Set(existing.map(x => x.id));
   let n = 2;
-  while (setIds.has(profileId)) {
-    profileId = `${baseId}-${n++}`;
-  }
+  while (setIds.has(profileId)) profileId = `${baseId}-${n++}`;
 
   const fresh = defaultProfileState(profileId, name, payType, lastPay, md);
   await profileDocRef(currentUser.uid, profileId).set(fresh, { merge: true });
 
-  els.newProfileName.value = "";
-  els.newLastPayDate.value = "";
-  els.newMonthDay.value = "";
-  els.profilesMsg.textContent = "Perfil creado ✅";
+  if (els.newProfileName) els.newProfileName.value = "";
+  if (els.newLastPayDate) els.newLastPayDate.value = "";
+  if (els.newMonthDay) els.newMonthDay.value = "";
+
+  setText(els.profilesMsg, "Perfil creado ✅");
   await refreshProfilesList();
 }
 
-/***********************
- * Open profile
- ***********************/
 async function openProfile(profileId) {
   currentProfileId = profileId;
   localStorage.setItem("lastProfileId", profileId);
 
-  els.cloudMsg.textContent = "Cargando de la nube…";
+  setText(els.cloudMsg, "Cargando de la nube…");
   state = await loadProfile(currentUser.uid, profileId);
 
   rebuildExpensesTable();
@@ -738,89 +727,80 @@ async function openProfile(profileId) {
 /***********************
  * Events
  ***********************/
-// Show pass / hide pass
-if (els.btnTogglePass) {
-  els.btnTogglePass.addEventListener("click", () => {
-    const hidden = els.authPass.type === "password";
-    els.authPass.type = hidden ? "text" : "password";
-    els.btnTogglePass.textContent = hidden ? "Hide pass" : "Show pass";
-  });
-}
+on(els.btnTogglePass, "click", () => {
+  const hidden = els.authPass?.type === "password";
+  if (els.authPass) els.authPass.type = hidden ? "text" : "password";
+  if (els.btnTogglePass) els.btnTogglePass.textContent = hidden ? "Hide pass" : "Show pass";
+});
 
-// Auth
-els.btnSignup.addEventListener("click", async () => {
+on(els.btnSignup, "click", async () => {
   try {
-    els.authMsg.textContent = "Creando cuenta…";
-    await auth.createUserWithEmailAndPassword(els.authEmail.value.trim(), els.authPass.value);
+    setText(els.authMsg, "Creando cuenta…");
+    await auth.createUserWithEmailAndPassword((els.authEmail?.value || "").trim(), els.authPass?.value || "");
   } catch (e) {
-    els.authMsg.textContent = e?.message || "Error creando cuenta";
+    setText(els.authMsg, e?.message || "Error creando cuenta");
   }
 });
 
-els.btnLogin.addEventListener("click", async () => {
+on(els.btnLogin, "click", async () => {
   try {
-    els.authMsg.textContent = "Entrando…";
-    await auth.signInWithEmailAndPassword(els.authEmail.value.trim(), els.authPass.value);
-    // vuelve a ocultar
-    els.authPass.type = "password";
+    setText(els.authMsg, "Entrando…");
+    await auth.signInWithEmailAndPassword((els.authEmail?.value || "").trim(), els.authPass?.value || "");
+    if (els.authPass) els.authPass.type = "password";
     if (els.btnTogglePass) els.btnTogglePass.textContent = "Show pass";
   } catch (e) {
-    els.authMsg.textContent = e?.message || "Error entrando";
+    setText(els.authMsg, e?.message || "Error entrando");
   }
 });
 
-els.btnLogout.addEventListener("click", async () => {
+on(els.btnLogout, "click", async () => {
   await auth.signOut();
 });
 
-// Profiles
-els.btnBackProfiles.addEventListener("click", () => show("profiles"));
-els.btnRefreshProfiles.addEventListener("click", () => refreshProfilesList());
+on(els.btnBackProfiles, "click", () => show("profiles"));
+on(els.btnRefreshProfiles, "click", () => refreshProfilesList());
 
-els.newPayType.addEventListener("change", () => {
-  setMonthlyVisibility(els.newPayType, els.newMonthDayWrap);
-});
-
-els.btnCreateProfile.addEventListener("click", async () => {
+on(els.newPayType, "change", () => setMonthlyVisibility(els.newPayType, els.newMonthDayWrap));
+on(els.btnCreateProfile, "click", async () => {
   try {
-    els.profilesMsg.textContent = "Creando…";
+    setText(els.profilesMsg, "Creando…");
     await createProfile();
-  } catch (e) {
-    els.profilesMsg.textContent = e?.message || "No pude crear el perfil.";
+  } catch {
+    setText(els.profilesMsg, "No pude crear el perfil.");
   }
 });
 
-// App
-els.btnCalc.addEventListener("click", () => refreshAll());
+on(els.btnCalc, "click", () => refreshAll());
 
-els.payType.addEventListener("change", () => {
+on(els.payType, "change", () => {
+  if (!state) return;
   state.paySchedule.type = els.payType.value;
   setMonthlyVisibility(els.payType, els.monthDayWrap);
 
   if (state.paySchedule.type === "monthly") {
     const md = Number(state.paySchedule.monthDay) || (state.lastPayDate ? new Date(state.lastPayDate).getDate() : 1);
     state.paySchedule.monthDay = md;
-    els.monthDay.value = String(md);
+    if (els.monthDay) els.monthDay.value = String(md);
   }
 
   saveToCloudDebounced();
   refreshAll();
 });
 
-els.lastPayDate.addEventListener("change", () => {
+on(els.lastPayDate, "change", () => {
+  if (!state) return;
   state.lastPayDate = els.lastPayDate.value;
 
-  // si es mensual y no hay monthDay, lo toma de la fecha
   if (state.paySchedule.type === "monthly" && state.lastPayDate) {
     state.paySchedule.monthDay = new Date(state.lastPayDate).getDate();
-    els.monthDay.value = String(state.paySchedule.monthDay);
+    if (els.monthDay) els.monthDay.value = String(state.paySchedule.monthDay);
   }
 
   saveToCloudDebounced();
   refreshAll();
 });
 
-els.monthDay.addEventListener("input", () => {
+on(els.monthDay, "input", () => {
   if (!state) return;
   const v = Math.max(1, Math.min(31, Number(els.monthDay.value) || 1));
   state.paySchedule.monthDay = v;
@@ -828,82 +808,32 @@ els.monthDay.addEventListener("input", () => {
   refreshAll();
 });
 
-// Expenses
-els.btnAddExpense.addEventListener("click", () => {
+on(els.btnAddExpense, "click", () => {
+  if (!state) return;
   const ex = { id: uid(), name: "Nuevo gasto", amount: "", freqId: "monthly", dueDate: "" };
   state.expenses.push(ex);
   saveToCloudDebounced();
-  els.rows.appendChild(createExpenseRow(ex));
+  if (els.rows) els.rows.appendChild(createExpenseRow(ex));
   refreshAll();
 });
 
-// Reset profile
-els.btnResetProfile.addEventListener("click", async () => {
-  if (!currentUser || !currentProfileId) return;
+on(els.btnResetProfile, "click", async () => {
+  if (!currentUser || !currentProfileId || !state) return;
   if (!confirm("¿Seguro que quieres resetear este perfil en la nube?")) return;
 
-  const name = state.displayName;
-  const type = state.paySchedule?.type || "15days";
-  const lastPay = state.lastPayDate || "";
-  const md = Number(state.paySchedule?.monthDay) || 1;
-
-  const fresh = defaultProfileState(currentProfileId, name, type, lastPay, md);
+  const fresh = defaultProfileState(
+    currentProfileId,
+    state.displayName,
+    state.paySchedule?.type || "15days",
+    state.lastPayDate || "",
+    Number(state.paySchedule?.monthDay) || 1
+  );
   await profileDocRef(currentUser.uid, currentProfileId).set(fresh, { merge: false });
   state = fresh;
 
   rebuildExpensesTable();
   refreshAll();
-  els.cloudMsg.textContent = "Perfil reseteado.";
-});
-
-// Export/Import
-els.btnExport.addEventListener("click", () => {
-  const payload = { ...state, exportedAt: new Date().toISOString() };
-  const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
-  const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = `finanzas-${currentProfileId}-backup.json`;
-  document.body.appendChild(a);
-  a.click();
-  a.remove();
-  URL.revokeObjectURL(url);
-});
-
-els.importFile.addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-
-  try {
-    const text = await file.text();
-    const data = JSON.parse(text);
-
-    // merge seguro
-    state.displayName = data.displayName ?? state.displayName;
-    state.paySchedule = data.paySchedule ?? state.paySchedule;
-    state.lastPayDate = data.lastPayDate ?? state.lastPayDate;
-    state.paychecks = (data.paychecks && typeof data.paychecks === "object") ? data.paychecks : state.paychecks;
-
-    if (Array.isArray(data.expenses)) {
-      state.expenses = data.expenses.map(x => ({
-        id: x.id || uid(),
-        name: x.name ?? "",
-        amount: x.amount ?? "",
-        freqId: BILL_FREQ.some(f => f.id === x.freqId) ? x.freqId : "monthly",
-        dueDate: x.dueDate ?? "",
-      }));
-    }
-
-    saveToCloudDebounced();
-    rebuildExpensesTable();
-    refreshAll();
-    els.cloudMsg.textContent = "Importado y guardando en la nube…";
-  } catch {
-    alert("Archivo inválido.");
-  } finally {
-    e.target.value = "";
-  }
+  setText(els.cloudMsg, "Perfil reseteado.");
 });
 
 /***********************
@@ -915,7 +845,7 @@ auth.onAuthStateChanged(async (user) => {
   if (!user) {
     currentProfileId = null;
     state = null;
-    els.authMsg.textContent = "";
+    setText(els.authMsg, "");
     show("auth");
     return;
   }
@@ -925,10 +855,7 @@ auth.onAuthStateChanged(async (user) => {
 
   const last = localStorage.getItem("lastProfileId");
   if (last) {
-    // abre si existe
     const profiles = await listProfilesFromCloud(user.uid);
-    if (profiles.some(p => p.id === last)) {
-      await openProfile(last);
-    }
+    if (profiles.some(p => p.id === last)) await openProfile(last);
   }
 });
