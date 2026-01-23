@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Finanzas Minimal</title>
+  <link rel="stylesheet" href="styles.css"/>
+</head>
+<body>
+  <div class="wrap">
+    <header class="top">
+      <div>
+        <h1>Finanzas</h1>
+        <p class="muted">Web minimalista. Guarda automáticamente en este dispositivo (sin base de datos).</p>
+      </div>
+      <div class="topActions">
+        <button id="btnSwitchProfile" class="btn ghost hidden">Cambiar perfil</button>
+      </div>
+    </header>
+
+    <!-- Pantalla 1: elegir perfil -->
+    <section id="profileView" class="card">
+      <h2>¿Quién va a calcular?</h2>
+      <p class="muted tiny">Cada perfil guarda sus datos por separado en este navegador.</p>
+
+      <div class="profileGrid mt">
+        <button class="profileBtn" data-profile="noel">
+          Noel
+          <span class="muted tiny">Cobro cada 15 días</span>
+        </button>
+
+        <button class="profileBtn" data-profile="jenniffer">
+          Jenniffer
+          <span class="muted tiny">Cobro semanal</span>
+        </button>
+      </div>
+
+      <div class="muted tiny mt">
+        Tip: si abres esto en otro teléfono/computadora, ese dispositivo empezará “vacío”.
+      </div>
+    </section>
+
+    <!-- Pantalla 2: app -->
+    <section id="appView" class="card hidden">
+      <div class="rowBetween">
+        <h2 id="whoTitle">Perfil</h2>
+        <div class="rowActions">
+          <button id="btnCalc" class="btn">Calcular</button>
+          <button id="btnExport" class="btn ghost">Exportar</button>
+          <label class="btn ghost fileBtn">
+            Importar
+            <input id="importFile" type="file" accept="application/json"/>
+          </label>
+          <button id="btnResetProfile" class="btn danger ghost">Reset perfil</button>
+        </div>
+      </div>
+
+      <div class="grid4 mt">
+        <label class="field">
+          <span>Frecuencia de cobro</span>
+          <select id="payInterval">
+            <option value="15">Cada 15 días</option>
+            <option value="7">Semanal (cada 7 días)</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Último cobro</span>
+          <input id="lastPayDate" type="date"/>
+        </label>
+
+        <label class="field">
+          <span>Próximo cobro (auto)</span>
+          <input id="nextPayDate" type="text" readonly />
+        </label>
+
+        <label class="field">
+          <span>Cobro de hoy (opcional)</span>
+          <input id="income" inputmode="decimal" placeholder="Si quieres ver ‘Libre’"/>
+        </label>
+      </div>
+
+      <div class="miniRow mt">
+        <div class="pill">
+          <span class="muted">Urgente (vence antes del próximo cobro)</span>
+          <span id="urgent" class="strong">$0</span>
+        </div>
+        <div class="pill">
+          <span class="muted">Apartar en el próximo cobro</span>
+          <span id="nextSave" class="strong">$0</span>
+        </div>
+        <div class="pill">
+          <span class="muted">Te queda libre (si pusiste cobro)</span>
+          <span id="free" class="strong muted">—</span>
+        </div>
+      </div>
+
+      <hr class="hr"/>
+
+      <div class="rowBetween">
+        <h2>Gastos fijos</h2>
+        <button id="btnAddExpense" class="btn">+ Agregar gasto</button>
+      </div>
+
+      <div class="table mt">
+        <div class="thead">
+          <div>Gasto</div>
+          <div>Monto</div>
+          <div>Frecuencia</div>
+          <div>Próximo pago</div>
+          <div class="right">Apartar (próximo cobro)</div>
+          <div></div>
+        </div>
+
+        <div id="rows"></div>
+      </div>
+
+      <div class="rowBetween mt">
+        <h2>Plan de próximos cobros</h2>
+        <span class="muted tiny">Estimado: cuánto apartar en cada cobro</span>
+      </div>
+
+      <div class="plan mt" id="plan"></div>
+
+      <div id="saveMsg" class="muted tiny mt"></div>
+    </section>
+
+    <footer class="muted tiny foot">
+      Guardado automático en este navegador (LocalStorage).
+    </footer>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
