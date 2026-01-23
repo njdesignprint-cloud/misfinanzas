@@ -11,10 +11,10 @@
     <header class="top">
       <div>
         <h1>Mis Finanzas</h1>
-        <p class="muted">Con login y base de datos (Firebase). Datos sincronizados en cualquier dispositivo.</p>
+        <p class="muted">Login + Base de datos (Firebase). Datos sincronizados en cualquier dispositivo.</p>
       </div>
       <div class="topActions">
-        <button id="btnLogout" class="btn ghost hidden">Salir</button>
+        <button id="btnLogout" class="btn ghost hidden" type="button">Salir</button>
       </div>
     </header>
 
@@ -26,17 +26,22 @@
       <div class="grid2 mt">
         <label class="field">
           <span>Email</span>
-          <input id="authEmail" type="email" placeholder="tuemail@gmail.com">
+          <input id="authEmail" type="email" placeholder="tuemail@gmail.com" autocomplete="email" />
         </label>
+
         <label class="field">
           <span>Password</span>
-          <input id="authPass" type="password" placeholder="••••••••">
+
+          <div class="passWrap">
+            <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password" />
+            <button id="btnTogglePass" type="button" class="btn ghost passBtn">Mostrar</button>
+          </div>
         </label>
       </div>
 
       <div class="rowActions mt">
-        <button id="btnLogin" class="btn">Entrar</button>
-        <button id="btnSignup" class="btn ghost">Crear cuenta</button>
+        <button id="btnLogin" class="btn" type="button">Entrar</button>
+        <button id="btnSignup" class="btn ghost" type="button">Crear cuenta</button>
       </div>
 
       <div id="authMsg" class="muted tiny mt"></div>
@@ -45,15 +50,15 @@
     <!-- VIEW 2: PICK PROFILE -->
     <section id="profileView" class="card hidden">
       <h2>¿Quién va a calcular?</h2>
-      <p class="muted tiny">Cada perfil tiene sus datos separados.</p>
+      <p class="muted tiny">Cada perfil guarda sus datos por separado en la nube.</p>
 
       <div class="profileGrid mt">
-        <button class="profileBtn" data-profile="noel">
+        <button class="profileBtn" data-profile="noel" type="button">
           Noel
           <span class="muted tiny">Cobro cada 15 días</span>
         </button>
 
-        <button class="profileBtn" data-profile="jenniffer">
+        <button class="profileBtn" data-profile="jenniffer" type="button">
           Jenniffer
           <span class="muted tiny">Cobro semanal</span>
         </button>
@@ -69,14 +74,16 @@
       <div class="rowBetween">
         <h2 id="whoTitle">Perfil</h2>
         <div class="rowActions">
-          <button id="btnBackProfiles" class="btn ghost">Cambiar perfil</button>
-          <button id="btnCalc" class="btn">Calcular</button>
-          <button id="btnExport" class="btn ghost">Exportar</button>
+          <button id="btnBackProfiles" class="btn ghost" type="button">Cambiar perfil</button>
+          <button id="btnCalc" class="btn" type="button">Calcular</button>
+          <button id="btnExport" class="btn ghost" type="button">Exportar</button>
+
           <label class="btn ghost fileBtn">
             Importar
             <input id="importFile" type="file" accept="application/json"/>
           </label>
-          <button id="btnResetProfile" class="btn danger ghost">Reset perfil</button>
+
+          <button id="btnResetProfile" class="btn danger ghost" type="button">Reset perfil</button>
         </div>
       </div>
 
@@ -124,7 +131,7 @@
 
       <div class="rowBetween">
         <h2>Gastos fijos</h2>
-        <button id="btnAddExpense" class="btn">+ Agregar gasto</button>
+        <button id="btnAddExpense" class="btn" type="button">+ Agregar gasto</button>
       </div>
 
       <div class="table mt">
@@ -150,11 +157,11 @@
     </section>
 
     <footer class="muted tiny foot">
-      Si te da error de login: revisa Firebase → Authentication → Authorized domains y agrega tu dominio de GitHub Pages.
+      Si el login falla: Firebase → Authentication → Authorized domains → agrega tu dominio GitHub Pages.
     </footer>
   </div>
 
-  <!-- Firebase CDN (sin imports, sirve para GitHub Pages) -->
+  <!-- Firebase CDN (para GitHub Pages) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>

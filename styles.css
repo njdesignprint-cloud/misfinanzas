@@ -157,6 +157,15 @@ input:focus, select:focus{
   box-shadow: 0 0 0 3px rgba(74,163,255,.14);
 }
 
+/* Mostrar/Ocultar password */
+.passWrap{
+  display:flex;
+  gap:10px;
+  align-items:center;
+}
+.passWrap input{flex:1;}
+.passBtn{white-space:nowrap;}
+
 .hr{border:none; border-top:1px solid rgba(255,255,255,.08); margin:14px 0;}
 .foot{opacity:.9; margin-top:8px;}
 

@@ -1,5 +1,5 @@
 /***********************
- * 1) PEGA TU firebaseConfig AQUÍ (SOLO EL OBJETO)
+ * Firebase Config (TU PROYECTO)
  ***********************/
 const firebaseConfig = {
   apiKey: "AIzaSyATpb8_S2JhY1T2Lb8lzn3_544C7Kqd4OI",
@@ -11,13 +11,14 @@ const firebaseConfig = {
   measurementId: "G-ZBVLVMQKDJ"
 };
 
-// Firebase init (compat)
-firebase.initializeApp(firebaseConfig);
+// Init Firebase (evita doble init)
+if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
 const db = firebase.firestore();
 
 /***********************
- * 2) Config App
+ * Config App
  ***********************/
 const PROFILE_META = {
   noel: { name: "Noel", intervalDays: 15, defaultLastPay: "2026-01-09" },
@@ -40,6 +41,7 @@ const els = {
 
   authEmail: $("authEmail"),
   authPass: $("authPass"),
+  btnTogglePass: $("btnTogglePass"),
   btnLogin: $("btnLogin"),
   btnSignup: $("btnSignup"),
   authMsg: $("authMsg"),
@@ -73,7 +75,7 @@ let currentProfileId = null;
 let state = null;
 
 /***********************
- * 3) Helpers
+ * Helpers
  ***********************/
 function uid() {
   return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
@@ -116,6 +118,7 @@ function addYears(date, years) {
   d.setFullYear(d.getFullYear() + years);
   return d;
 }
+
 function advanceDueDate(dueDateStr, freqId, refDate) {
   let due = startOfDay(new Date(dueDateStr));
   if (Number.isNaN(due.getTime())) return null;
@@ -129,6 +132,7 @@ function advanceDueDate(dueDateStr, freqId, refDate) {
   }
   return due;
 }
+
 function computeNextPayDate(lastPayStr, intervalDays) {
   if (!lastPayStr) return null;
   let d = startOfDay(new Date(lastPayStr));
@@ -141,6 +145,7 @@ function computeNextPayDate(lastPayStr, intervalDays) {
   }
   return d;
 }
+
 function generatePayDates(nextPay, intervalDays, count=8) {
   const out = [];
   let d = startOfDay(nextPay);
@@ -152,7 +157,7 @@ function generatePayDates(nextPay, intervalDays, count=8) {
 }
 
 /***********************
- * 4) Default data
+ * Default data
  ***********************/
 function defaultExpensesList() {
   return [
@@ -167,6 +172,7 @@ function defaultExpensesList() {
     { id: uid(), name: "Mama",          amount: "", freqId: "monthly", dueDate: "" },
   ];
 }
+
 function defaultProfileState(profileId) {
   const meta = PROFILE_META[profileId];
   return {
@@ -180,7 +186,7 @@ function defaultProfileState(profileId) {
 }
 
 /***********************
- * 5) Firestore paths
+ * Firestore
  ***********************/
 function profileDocRef(uid, profileId) {
   return db.collection("users").doc(uid).collection("profiles").doc(profileId);
@@ -225,13 +231,13 @@ function saveToCloudDebounced() {
       await profileDocRef(currentUser.uid, currentProfileId).set(state, { merge: true });
       els.cloudMsg.textContent = `Guardado en la nube: ${new Date().toLocaleTimeString()}`;
     } catch (e) {
-      els.cloudMsg.textContent = "No pude guardar (revisa Firebase/rules/dominio).";
+      els.cloudMsg.textContent = "No pude guardar (revisa Rules / dominio / login).";
     }
   }, 250);
 }
 
 /***********************
- * 6) Calculations
+ * Calculations
  ***********************/
 function compute(state) {
   const intervalDays = Number(state.intervalDays) === 7 ? 7 : 15;
@@ -313,7 +319,7 @@ function compute(state) {
 }
 
 /***********************
- * 7) UI
+ * UI
  ***********************/
 function show(view) {
   els.authView.classList.toggle("hidden", view !== "auth");
@@ -345,7 +351,7 @@ function createExpenseRow(expense) {
     <select class="freq"></select>
     <input class="due" type="date" />
     <div class="right strong perPay">$0</div>
-    <button class="btn danger ghost del" title="Eliminar">✕</button>
+    <button class="btn danger ghost del" title="Eliminar" type="button">✕</button>
   `;
 
   const nameEl = row.querySelector(".name");
@@ -362,10 +368,11 @@ function createExpenseRow(expense) {
     `<option value="${f.id}" ${f.id === expense.freqId ? "selected" : ""}>${f.label}</option>`
   ).join("");
 
-  // No re-render al teclear (soluciona el bug “no deja meter más de 1 número”)
+  // NO re-render mientras tecleas (arregla el bug de 1 solo número)
   nameEl.addEventListener("input", () => updateExpense(expense.id, { name: nameEl.value }, false));
   amountEl.addEventListener("input", () => updateExpense(expense.id, { amount: amountEl.value }, false));
 
+  // estos sí refrescan todo
   freqEl.addEventListener("change", () => updateExpense(expense.id, { freqId: freqEl.value }, true));
   dueEl.addEventListener("change", () => updateExpense(expense.id, { dueDate: dueEl.value }, true));
 
@@ -376,9 +383,7 @@ function createExpenseRow(expense) {
 
 function rebuildExpensesTable() {
   els.rows.innerHTML = "";
-  for (const ex of state.expenses) {
-    els.rows.appendChild(createExpenseRow(ex));
-  }
+  for (const ex of state.expenses) els.rows.appendChild(createExpenseRow(ex));
 }
 
 function updateExpense(id, patch, fullRefresh) {
@@ -470,15 +475,20 @@ async function openProfile(profileId) {
 }
 
 /***********************
- * 8) Events
+ * Events
  ***********************/
+// Mostrar / ocultar password
+els.btnTogglePass.addEventListener("click", () => {
+  const isHidden = els.authPass.type === "password";
+  els.authPass.type = isHidden ? "text" : "password";
+  els.btnTogglePass.textContent = isHidden ? "Ocultar" : "Mostrar";
+});
+
+// Auth
 els.btnSignup.addEventListener("click", async () => {
   try {
     els.authMsg.textContent = "Creando cuenta…";
-    await auth.createUserWithEmailAndPassword(
-      els.authEmail.value.trim(),
-      els.authPass.value
-    );
+    await auth.createUserWithEmailAndPassword(els.authEmail.value.trim(), els.authPass.value);
   } catch (e) {
     els.authMsg.textContent = e?.message || "Error creando cuenta";
   }
@@ -487,10 +497,10 @@ els.btnSignup.addEventListener("click", async () => {
 els.btnLogin.addEventListener("click", async () => {
   try {
     els.authMsg.textContent = "Entrando…";
-    await auth.signInWithEmailAndPassword(
-      els.authEmail.value.trim(),
-      els.authPass.value
-    );
+    await auth.signInWithEmailAndPassword(els.authEmail.value.trim(), els.authPass.value);
+    // opcional: vuelve a ocultar el password
+    els.authPass.type = "password";
+    els.btnTogglePass.textContent = "Mostrar";
   } catch (e) {
     els.authMsg.textContent = e?.message || "Error entrando";
   }
@@ -500,13 +510,14 @@ els.btnLogout.addEventListener("click", async () => {
   await auth.signOut();
 });
 
+// Profiles
 document.querySelectorAll(".profileBtn").forEach(btn => {
-  btn.addEventListener("click", async () => {
-    await openProfile(btn.dataset.profile);
-  });
+  btn.addEventListener("click", async () => openProfile(btn.dataset.profile));
 });
 
 els.btnBackProfiles.addEventListener("click", () => show("profiles"));
+
+// App inputs
 els.btnCalc.addEventListener("click", () => refreshAll());
 
 els.payInterval.addEventListener("change", (e) => {
@@ -548,7 +559,7 @@ els.btnResetProfile.addEventListener("click", async () => {
   els.cloudMsg.textContent = "Perfil reseteado.";
 });
 
-// Backup export/import (opcional pero útil)
+// Export/Import
 els.btnExport.addEventListener("click", () => {
   const payload = { ...state, exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -597,7 +608,7 @@ els.importFile.addEventListener("change", async (e) => {
 });
 
 /***********************
- * 9) Start
+ * Start
  ***********************/
 auth.onAuthStateChanged(async (user) => {
   currentUser = user;
