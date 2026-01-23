@@ -1,4 +1,24 @@
-/* ========= Config ========= */
+/***********************
+ * 1) PEGA TU firebaseConfig AQUÍ (SOLO EL OBJETO)
+ ***********************/
+const firebaseConfig = {
+  apiKey: "AIzaSyATpb8_S2JhY1T2Lb8lzn3_544C7Kqd4OI",
+  authDomain: "misfinanzas-618f2.firebaseapp.com",
+  projectId: "misfinanzas-618f2",
+  storageBucket: "misfinanzas-618f2.firebasestorage.app",
+  messagingSenderId: "998483559442",
+  appId: "1:998483559442:web:435dced19e19a884b984cb",
+  measurementId: "G-ZBVLVMQKDJ"
+};
+
+// Firebase init (compat)
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+
+/***********************
+ * 2) Config App
+ ***********************/
 const PROFILE_META = {
   noel: { name: "Noel", intervalDays: 15, defaultLastPay: "2026-01-09" },
   jenniffer: { name: "Jenniffer", intervalDays: 7, defaultLastPay: "" },
@@ -14,11 +34,19 @@ const BILL_FREQ = [
 const $ = (id) => document.getElementById(id);
 
 const els = {
+  authView: $("authView"),
   profileView: $("profileView"),
   appView: $("appView"),
 
+  authEmail: $("authEmail"),
+  authPass: $("authPass"),
+  btnLogin: $("btnLogin"),
+  btnSignup: $("btnSignup"),
+  authMsg: $("authMsg"),
+  btnLogout: $("btnLogout"),
+
   whoTitle: $("whoTitle"),
-  btnSwitchProfile: $("btnSwitchProfile"),
+  btnBackProfiles: $("btnBackProfiles"),
 
   btnCalc: $("btnCalc"),
   btnExport: $("btnExport"),
@@ -37,48 +65,44 @@ const els = {
   btnAddExpense: $("btnAddExpense"),
   rows: $("rows"),
   plan: $("plan"),
-  saveMsg: $("saveMsg"),
+  cloudMsg: $("cloudMsg"),
 };
 
+let currentUser = null;
 let currentProfileId = null;
 let state = null;
 
-/* ========= Utils ========= */
+/***********************
+ * 3) Helpers
+ ***********************/
 function uid() {
   return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
 }
-
 function startOfDay(d) {
   const x = new Date(d);
   x.setHours(0,0,0,0);
   return x;
 }
-
 function parseNumber(v) {
   const cleaned = String(v ?? "").replace(/,/g, "").trim();
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : 0;
 }
-
 function hasValue(str) {
   return String(str ?? "").trim().length > 0;
 }
-
 function fmtMoney(n) {
   const v = Number.isFinite(n) ? n : 0;
   return v.toLocaleString(undefined, { style: "currency", currency: "USD" });
 }
-
 function fmtDate(d) {
   return new Intl.DateTimeFormat("es-US", { year:"numeric", month:"short", day:"2-digit" }).format(d);
 }
-
 function addDays(date, days) {
   const d = new Date(date);
   d.setDate(d.getDate() + days);
   return d;
 }
-
 function addMonths(date, months) {
   const d = new Date(date);
   const day = d.getDate();
@@ -87,13 +111,11 @@ function addMonths(date, months) {
   if (day > lastDay) d.setDate(lastDay);
   return d;
 }
-
 function addYears(date, years) {
   const d = new Date(date);
   d.setFullYear(d.getFullYear() + years);
   return d;
 }
-
 function advanceDueDate(dueDateStr, freqId, refDate) {
   let due = startOfDay(new Date(dueDateStr));
   if (Number.isNaN(due.getTime())) return null;
@@ -107,8 +129,6 @@ function advanceDueDate(dueDateStr, freqId, refDate) {
   }
   return due;
 }
-
-/* Próximo cobro = el primero >= hoy, avanzando por intervalos desde último cobro */
 function computeNextPayDate(lastPayStr, intervalDays) {
   if (!lastPayStr) return null;
   let d = startOfDay(new Date(lastPayStr));
@@ -121,7 +141,6 @@ function computeNextPayDate(lastPayStr, intervalDays) {
   }
   return d;
 }
-
 function generatePayDates(nextPay, intervalDays, count=8) {
   const out = [];
   let d = startOfDay(nextPay);
@@ -132,11 +151,9 @@ function generatePayDates(nextPay, intervalDays, count=8) {
   return out;
 }
 
-/* ========= Storage ========= */
-function storageKey(profileId) {
-  return `finanzas_web_${profileId}_v1`;
-}
-
+/***********************
+ * 4) Default data
+ ***********************/
 function defaultExpensesList() {
   return [
     { id: uid(), name: "Renta",         amount: "", freqId: "monthly", dueDate: "" },
@@ -150,58 +167,72 @@ function defaultExpensesList() {
     { id: uid(), name: "Mama",          amount: "", freqId: "monthly", dueDate: "" },
   ];
 }
-
-function defaultState(profileId) {
+function defaultProfileState(profileId) {
   const meta = PROFILE_META[profileId];
   return {
     profileId,
     intervalDays: meta.intervalDays,
     lastPayDate: meta.defaultLastPay,
-    incomePerPay: "", // opcional
+    incomePerPay: "",
     expenses: defaultExpensesList(),
     updatedAt: new Date().toISOString(),
   };
 }
 
-function loadState(profileId) {
-  const raw = localStorage.getItem(storageKey(profileId));
-  if (!raw) return defaultState(profileId);
+/***********************
+ * 5) Firestore paths
+ ***********************/
+function profileDocRef(uid, profileId) {
+  return db.collection("users").doc(uid).collection("profiles").doc(profileId);
+}
 
-  try {
-    const data = JSON.parse(raw);
-    const meta = PROFILE_META[profileId];
+async function loadFromCloud(uid, profileId) {
+  const ref = profileDocRef(uid, profileId);
+  const snap = await ref.get();
 
-    return {
-      profileId,
-      intervalDays: Number(data.intervalDays) === 7 ? 7 : 15,
-      lastPayDate: data.lastPayDate ?? meta.defaultLastPay ?? "",
-      incomePerPay: data.incomePerPay ?? "",
-      expenses: Array.isArray(data.expenses) ? data.expenses.map(e => ({
-        id: e.id || uid(),
-        name: e.name ?? "",
-        amount: e.amount ?? "",
-        freqId: BILL_FREQ.some(f => f.id === e.freqId) ? e.freqId : "monthly",
-        dueDate: e.dueDate ?? "",
-      })) : defaultExpensesList(),
-      updatedAt: data.updatedAt ?? new Date().toISOString(),
-    };
-  } catch {
-    return defaultState(profileId);
+  if (!snap.exists) {
+    const fresh = defaultProfileState(profileId);
+    await ref.set(fresh, { merge: true });
+    return fresh;
   }
+
+  const data = snap.data() || {};
+  const meta = PROFILE_META[profileId];
+
+  return {
+    profileId,
+    intervalDays: Number(data.intervalDays) === 7 ? 7 : 15,
+    lastPayDate: data.lastPayDate ?? meta.defaultLastPay ?? "",
+    incomePerPay: data.incomePerPay ?? "",
+    expenses: Array.isArray(data.expenses) ? data.expenses.map(e => ({
+      id: e.id || uid(),
+      name: e.name ?? "",
+      amount: e.amount ?? "",
+      freqId: BILL_FREQ.some(f => f.id === e.freqId) ? e.freqId : "monthly",
+      dueDate: e.dueDate ?? "",
+    })) : defaultExpensesList(),
+    updatedAt: data.updatedAt ?? new Date().toISOString(),
+  };
 }
 
 let saveTimer = null;
-function saveStateDebounced() {
+function saveToCloudDebounced() {
   clearTimeout(saveTimer);
-  saveTimer = setTimeout(() => {
-    if (!currentProfileId || !state) return;
-    state.updatedAt = new Date().toISOString();
-    localStorage.setItem(storageKey(currentProfileId), JSON.stringify(state));
-    els.saveMsg.textContent = `Guardado: ${new Date().toLocaleTimeString()}`;
-  }, 150);
+  saveTimer = setTimeout(async () => {
+    try {
+      if (!currentUser || !currentProfileId || !state) return;
+      state.updatedAt = new Date().toISOString();
+      await profileDocRef(currentUser.uid, currentProfileId).set(state, { merge: true });
+      els.cloudMsg.textContent = `Guardado en la nube: ${new Date().toLocaleTimeString()}`;
+    } catch (e) {
+      els.cloudMsg.textContent = "No pude guardar (revisa Firebase/rules/dominio).";
+    }
+  }, 250);
 }
 
-/* ========= Calculations ========= */
+/***********************
+ * 6) Calculations
+ ***********************/
 function compute(state) {
   const intervalDays = Number(state.intervalDays) === 7 ? 7 : 15;
   const nextPay = computeNextPayDate(state.lastPayDate, intervalDays);
@@ -219,7 +250,6 @@ function compute(state) {
     return { ...e, amountNum, due, valid, urgent };
   });
 
-  // “Apartar en próximo cobro” por gasto
   const perNextPay = new Map();
   let urgentTotal = 0;
   let nextSaveTotal = 0;
@@ -242,7 +272,6 @@ function compute(state) {
 
   const free = (nextPay && incomeProvided) ? (income - nextSaveTotal) : null;
 
-  // Plan 8 cobros (estimado)
   const plan = [];
   if (nextPay) {
     const sim = expenses.map(ex => ({
@@ -283,17 +312,14 @@ function compute(state) {
   return { nextPay, expenses, perNextPay, urgentTotal, nextSaveTotal, free, plan, incomeProvided };
 }
 
-/* ========= UI ========= */
-function showProfilePicker() {
-  els.profileView.classList.remove("hidden");
-  els.appView.classList.add("hidden");
-  els.btnSwitchProfile.classList.add("hidden");
-}
-
-function showApp() {
-  els.profileView.classList.add("hidden");
-  els.appView.classList.remove("hidden");
-  els.btnSwitchProfile.classList.remove("hidden");
+/***********************
+ * 7) UI
+ ***********************/
+function show(view) {
+  els.authView.classList.toggle("hidden", view !== "auth");
+  els.profileView.classList.toggle("hidden", view !== "profiles");
+  els.appView.classList.toggle("hidden", view !== "app");
+  els.btnLogout.classList.toggle("hidden", view === "auth");
 }
 
 function findRowById(id) {
@@ -336,11 +362,10 @@ function createExpenseRow(expense) {
     `<option value="${f.id}" ${f.id === expense.freqId ? "selected" : ""}>${f.label}</option>`
   ).join("");
 
-  // NO re-render al teclear (para evitar el bug de “no deja escribir más de 1 número”)
+  // No re-render al teclear (soluciona el bug “no deja meter más de 1 número”)
   nameEl.addEventListener("input", () => updateExpense(expense.id, { name: nameEl.value }, false));
   amountEl.addEventListener("input", () => updateExpense(expense.id, { amount: amountEl.value }, false));
 
-  // estos sí refrescan todo
   freqEl.addEventListener("change", () => updateExpense(expense.id, { freqId: freqEl.value }, true));
   dueEl.addEventListener("change", () => updateExpense(expense.id, { dueDate: dueEl.value }, true));
 
@@ -358,14 +383,14 @@ function rebuildExpensesTable() {
 
 function updateExpense(id, patch, fullRefresh) {
   state.expenses = state.expenses.map(e => (e.id === id ? { ...e, ...patch } : e));
-  saveStateDebounced();
+  saveToCloudDebounced();
   if (fullRefresh) refreshAll();
   else refreshCalculationsOnly();
 }
 
 function deleteExpense(id) {
   state.expenses = state.expenses.filter(e => e.id !== id);
-  saveStateDebounced();
+  saveToCloudDebounced();
   const row = findRowById(id);
   if (row) row.remove();
   refreshAll();
@@ -374,7 +399,6 @@ function deleteExpense(id) {
 function refreshHeaderInputs() {
   const meta = PROFILE_META[currentProfileId];
   els.whoTitle.textContent = `Perfil: ${meta.name}`;
-
   els.payInterval.value = String(state.intervalDays);
   els.lastPayDate.value = state.lastPayDate ?? "";
   els.income.value = state.incomePerPay ?? "";
@@ -433,68 +457,98 @@ function refreshAll() {
   refreshCalculationsOnly();
 }
 
-/* ========= Profile flow ========= */
-function openProfile(profileId) {
+async function openProfile(profileId) {
   currentProfileId = profileId;
-  localStorage.setItem("finanzas_last_profile", profileId);
+  localStorage.setItem("lastProfile", profileId);
 
-  state = loadState(profileId);
-
-  // si no tiene fecha aún, usa default del perfil (si existe)
-  const meta = PROFILE_META[profileId];
-  if (!state.lastPayDate && meta.defaultLastPay) state.lastPayDate = meta.defaultLastPay;
-  if (!state.intervalDays) state.intervalDays = meta.intervalDays;
+  els.cloudMsg.textContent = "Cargando de la nube…";
+  state = await loadFromCloud(currentUser.uid, profileId);
 
   rebuildExpensesTable();
   refreshAll();
-  showApp();
+  show("app");
 }
 
-/* ========= Events ========= */
+/***********************
+ * 8) Events
+ ***********************/
+els.btnSignup.addEventListener("click", async () => {
+  try {
+    els.authMsg.textContent = "Creando cuenta…";
+    await auth.createUserWithEmailAndPassword(
+      els.authEmail.value.trim(),
+      els.authPass.value
+    );
+  } catch (e) {
+    els.authMsg.textContent = e?.message || "Error creando cuenta";
+  }
+});
+
+els.btnLogin.addEventListener("click", async () => {
+  try {
+    els.authMsg.textContent = "Entrando…";
+    await auth.signInWithEmailAndPassword(
+      els.authEmail.value.trim(),
+      els.authPass.value
+    );
+  } catch (e) {
+    els.authMsg.textContent = e?.message || "Error entrando";
+  }
+});
+
+els.btnLogout.addEventListener("click", async () => {
+  await auth.signOut();
+});
+
 document.querySelectorAll(".profileBtn").forEach(btn => {
-  btn.addEventListener("click", () => openProfile(btn.dataset.profile));
+  btn.addEventListener("click", async () => {
+    await openProfile(btn.dataset.profile);
+  });
 });
 
-els.btnSwitchProfile.addEventListener("click", () => {
-  showProfilePicker();
-});
-
+els.btnBackProfiles.addEventListener("click", () => show("profiles"));
 els.btnCalc.addEventListener("click", () => refreshAll());
 
 els.payInterval.addEventListener("change", (e) => {
   state.intervalDays = Number(e.target.value) === 7 ? 7 : 15;
-  saveStateDebounced();
+  saveToCloudDebounced();
   refreshAll();
 });
 
 els.lastPayDate.addEventListener("change", (e) => {
   state.lastPayDate = e.target.value;
-  saveStateDebounced();
+  saveToCloudDebounced();
   refreshAll();
 });
 
 els.income.addEventListener("input", (e) => {
-  state.incomePerPay = e.target.value; // opcional
-  saveStateDebounced();
+  state.incomePerPay = e.target.value;
+  saveToCloudDebounced();
   refreshCalculationsOnly();
 });
 
 els.btnAddExpense.addEventListener("click", () => {
   const ex = { id: uid(), name: "Nuevo gasto", amount: "", freqId: "monthly", dueDate: "" };
   state.expenses.push(ex);
-  saveStateDebounced();
+  saveToCloudDebounced();
   els.rows.appendChild(createExpenseRow(ex));
   refreshAll();
 });
 
-els.btnResetProfile.addEventListener("click", () => {
-  if (!currentProfileId) return;
-  localStorage.removeItem(storageKey(currentProfileId));
-  state = defaultState(currentProfileId);
+els.btnResetProfile.addEventListener("click", async () => {
+  if (!currentUser || !currentProfileId) return;
+  if (!confirm("¿Seguro que quieres resetear este perfil en la nube?")) return;
+
+  const fresh = defaultProfileState(currentProfileId);
+  await profileDocRef(currentUser.uid, currentProfileId).set(fresh, { merge: false });
+  state = fresh;
+
   rebuildExpensesTable();
   refreshAll();
+  els.cloudMsg.textContent = "Perfil reseteado.";
 });
 
+// Backup export/import (opcional pero útil)
 els.btnExport.addEventListener("click", () => {
   const payload = { ...state, exportedAt: new Date().toISOString() };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type: "application/json" });
@@ -517,7 +571,6 @@ els.importFile.addEventListener("change", async (e) => {
     const text = await file.text();
     const data = JSON.parse(text);
 
-    // merge seguro
     state.intervalDays = Number(data.intervalDays) === 7 ? 7 : 15;
     state.lastPayDate = data.lastPayDate ?? state.lastPayDate;
     state.incomePerPay = data.incomePerPay ?? "";
@@ -532,23 +585,35 @@ els.importFile.addEventListener("change", async (e) => {
       }));
     }
 
-    saveStateDebounced();
+    saveToCloudDebounced();
     rebuildExpensesTable();
     refreshAll();
+    els.cloudMsg.textContent = "Importado y guardando en la nube…";
   } catch {
-    alert("Archivo inválido. Usa un JSON exportado por esta app.");
+    alert("Archivo inválido.");
   } finally {
     e.target.value = "";
   }
 });
 
-/* ========= Start ========= */
-(function init(){
-  // si ya eligió perfil antes, entra directo
-  const last = localStorage.getItem("finanzas_last_profile");
-  if (last === "noel" || last === "jenniffer") {
-    openProfile(last);
-  } else {
-    showProfilePicker();
+/***********************
+ * 9) Start
+ ***********************/
+auth.onAuthStateChanged(async (user) => {
+  currentUser = user;
+
+  if (!user) {
+    currentProfileId = null;
+    state = null;
+    els.authMsg.textContent = "";
+    show("auth");
+    return;
   }
-})();
+
+  show("profiles");
+
+  const last = localStorage.getItem("lastProfile");
+  if (last === "noel" || last === "jenniffer") {
+    await openProfile(last);
+  }
+});

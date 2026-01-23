@@ -3,25 +3,49 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Finanzas Minimal</title>
+  <title>Mis Finanzas</title>
   <link rel="stylesheet" href="styles.css"/>
 </head>
 <body>
   <div class="wrap">
     <header class="top">
       <div>
-        <h1>Finanzas</h1>
-        <p class="muted">Web minimalista. Guarda automáticamente en este dispositivo (sin base de datos).</p>
+        <h1>Mis Finanzas</h1>
+        <p class="muted">Con login y base de datos (Firebase). Datos sincronizados en cualquier dispositivo.</p>
       </div>
       <div class="topActions">
-        <button id="btnSwitchProfile" class="btn ghost hidden">Cambiar perfil</button>
+        <button id="btnLogout" class="btn ghost hidden">Salir</button>
       </div>
     </header>
 
-    <!-- Pantalla 1: elegir perfil -->
-    <section id="profileView" class="card">
+    <!-- VIEW 1: AUTH -->
+    <section id="authView" class="card">
+      <h2>Iniciar sesión</h2>
+      <p class="muted tiny">Usa el mismo email y password en cualquier dispositivo para ver los mismos datos.</p>
+
+      <div class="grid2 mt">
+        <label class="field">
+          <span>Email</span>
+          <input id="authEmail" type="email" placeholder="tuemail@gmail.com">
+        </label>
+        <label class="field">
+          <span>Password</span>
+          <input id="authPass" type="password" placeholder="••••••••">
+        </label>
+      </div>
+
+      <div class="rowActions mt">
+        <button id="btnLogin" class="btn">Entrar</button>
+        <button id="btnSignup" class="btn ghost">Crear cuenta</button>
+      </div>
+
+      <div id="authMsg" class="muted tiny mt"></div>
+    </section>
+
+    <!-- VIEW 2: PICK PROFILE -->
+    <section id="profileView" class="card hidden">
       <h2>¿Quién va a calcular?</h2>
-      <p class="muted tiny">Cada perfil guarda sus datos por separado en este navegador.</p>
+      <p class="muted tiny">Cada perfil tiene sus datos separados.</p>
 
       <div class="profileGrid mt">
         <button class="profileBtn" data-profile="noel">
@@ -36,15 +60,16 @@
       </div>
 
       <div class="muted tiny mt">
-        Tip: si abres esto en otro teléfono/computadora, ese dispositivo empezará “vacío”.
+        Si es la primera vez, se crea el perfil automáticamente.
       </div>
     </section>
 
-    <!-- Pantalla 2: app -->
+    <!-- VIEW 3: APP -->
     <section id="appView" class="card hidden">
       <div class="rowBetween">
         <h2 id="whoTitle">Perfil</h2>
         <div class="rowActions">
+          <button id="btnBackProfiles" class="btn ghost">Cambiar perfil</button>
           <button id="btnCalc" class="btn">Calcular</button>
           <button id="btnExport" class="btn ghost">Exportar</button>
           <label class="btn ghost fileBtn">
@@ -119,16 +144,20 @@
         <h2>Plan de próximos cobros</h2>
         <span class="muted tiny">Estimado: cuánto apartar en cada cobro</span>
       </div>
-
       <div class="plan mt" id="plan"></div>
 
-      <div id="saveMsg" class="muted tiny mt"></div>
+      <div id="cloudMsg" class="muted tiny mt"></div>
     </section>
 
     <footer class="muted tiny foot">
-      Guardado automático en este navegador (LocalStorage).
+      Si te da error de login: revisa Firebase → Authentication → Authorized domains y agrega tu dominio de GitHub Pages.
     </footer>
   </div>
+
+  <!-- Firebase CDN (sin imports, sirve para GitHub Pages) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
   <script src="app.js"></script>
 </body>
