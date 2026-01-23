@@ -11,7 +11,7 @@
     <header class="top">
       <div>
         <h1>Mis Finanzas</h1>
-        <p class="muted">Login + Base de datos (Firebase). Datos sincronizados en cualquier dispositivo.</p>
+        <p class="muted">Login + Base de datos (Firebase). Perfiles múltiples y cobros con montos.</p>
       </div>
       <div class="topActions">
         <button id="btnLogout" class="btn ghost hidden" type="button">Salir</button>
@@ -31,10 +31,9 @@
 
         <label class="field">
           <span>Password</span>
-
           <div class="passWrap">
             <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password" />
-            <button id="btnTogglePass" type="button" class="btn ghost passBtn">Mostrar</button>
+            <button id="btnTogglePass" type="button" class="btn ghost passBtn">Show pass</button>
           </div>
         </label>
       </div>
@@ -47,26 +46,55 @@
       <div id="authMsg" class="muted tiny mt"></div>
     </section>
 
-    <!-- VIEW 2: PICK PROFILE -->
+    <!-- VIEW 2: PROFILES -->
     <section id="profileView" class="card hidden">
-      <h2>¿Quién va a calcular?</h2>
-      <p class="muted tiny">Cada perfil guarda sus datos por separado en la nube.</p>
-
-      <div class="profileGrid mt">
-        <button class="profileBtn" data-profile="noel" type="button">
-          Noel
-          <span class="muted tiny">Cobro cada 15 días</span>
-        </button>
-
-        <button class="profileBtn" data-profile="jenniffer" type="button">
-          Jenniffer
-          <span class="muted tiny">Cobro semanal</span>
-        </button>
+      <div class="rowBetween">
+        <div>
+          <h2>Perfiles</h2>
+          <p class="muted tiny">Crea perfiles para Noel, Jenniffer y otros. Cada perfil guarda sus datos.</p>
+        </div>
+        <button id="btnRefreshProfiles" class="btn ghost" type="button">Actualizar</button>
       </div>
 
-      <div class="muted tiny mt">
-        Si es la primera vez, se crea el perfil automáticamente.
+      <div id="profilesList" class="profilesList mt"></div>
+
+      <hr class="hr"/>
+
+      <h2>Agregar nuevo perfil</h2>
+      <p class="muted tiny">Elige cada cuánto cobra su salario y su último cobro.</p>
+
+      <div class="grid4 mt">
+        <label class="field">
+          <span>Nombre del perfil</span>
+          <input id="newProfileName" placeholder="Ej: Mia, Ainhoa, etc." />
+        </label>
+
+        <label class="field">
+          <span>Frecuencia de cobro</span>
+          <select id="newPayType">
+            <option value="weekly">Semanal</option>
+            <option value="15days" selected>Cada 15 días</option>
+            <option value="biweekly">Quincenal (14 días)</option>
+            <option value="monthly">Mensual</option>
+          </select>
+        </label>
+
+        <label class="field">
+          <span>Último cobro</span>
+          <input id="newLastPayDate" type="date"/>
+        </label>
+
+        <label class="field hidden" id="newMonthDayWrap">
+          <span>Día de cobro (1-31)</span>
+          <input id="newMonthDay" type="number" min="1" max="31" placeholder="Ej: 15"/>
+        </label>
       </div>
+
+      <div class="rowActions mt">
+        <button id="btnCreateProfile" class="btn" type="button">Crear perfil</button>
+      </div>
+
+      <div id="profilesMsg" class="muted tiny mt"></div>
     </section>
 
     <!-- VIEW 3: APP -->
@@ -87,48 +115,72 @@
         </div>
       </div>
 
-      <div class="grid4 mt">
-        <label class="field">
-          <span>Frecuencia de cobro</span>
-          <select id="payInterval">
-            <option value="15">Cada 15 días</option>
-            <option value="7">Semanal (cada 7 días)</option>
-          </select>
-        </label>
-
-        <label class="field">
-          <span>Último cobro</span>
-          <input id="lastPayDate" type="date"/>
-        </label>
-
-        <label class="field">
-          <span>Próximo cobro (auto)</span>
-          <input id="nextPayDate" type="text" readonly />
-        </label>
-
-        <label class="field">
-          <span>Cobro de hoy (opcional)</span>
-          <input id="income" inputmode="decimal" placeholder="Si quieres ver ‘Libre’"/>
-        </label>
-      </div>
-
-      <div class="miniRow mt">
-        <div class="pill">
-          <span class="muted">Urgente (vence antes del próximo cobro)</span>
-          <span id="urgent" class="strong">$0</span>
+      <!-- Cobro / Salario -->
+      <div class="subcard mt">
+        <div class="rowBetween">
+          <h2>Salario (Cobros)</h2>
+          <span class="muted tiny">Pon monto por cada cobro (se guarda en la nube)</span>
         </div>
-        <div class="pill">
-          <span class="muted">Apartar en el próximo cobro</span>
-          <span id="nextSave" class="strong">$0</span>
+
+        <div class="grid4 mt">
+          <label class="field">
+            <span>Frecuencia de cobro</span>
+            <select id="payType">
+              <option value="weekly">Semanal</option>
+              <option value="15days">Cada 15 días</option>
+              <option value="biweekly">Quincenal (14 días)</option>
+              <option value="monthly">Mensual</option>
+            </select>
+          </label>
+
+          <label class="field">
+            <span>Último cobro</span>
+            <input id="lastPayDate" type="date"/>
+          </label>
+
+          <label class="field hidden" id="monthDayWrap">
+            <span>Día de cobro (1-31)</span>
+            <input id="monthDay" type="number" min="1" max="31" />
+          </label>
+
+          <label class="field">
+            <span>Próximo cobro (auto)</span>
+            <input id="nextPayDate" type="text" readonly />
+          </label>
         </div>
-        <div class="pill">
-          <span class="muted">Te queda libre (si pusiste cobro)</span>
-          <span id="free" class="strong muted">—</span>
+
+        <div class="miniRow mt">
+          <div class="pill">
+            <span class="muted">Urgente (vence antes del próximo cobro)</span>
+            <span id="urgent" class="strong">$0</span>
+          </div>
+          <div class="pill">
+            <span class="muted">Apartar en el próximo cobro</span>
+            <span id="nextSave" class="strong">$0</span>
+          </div>
+          <div class="pill">
+            <span class="muted">Libre (si pones monto del próximo cobro)</span>
+            <span id="free" class="strong muted">—</span>
+          </div>
+        </div>
+
+        <div class="mt">
+          <div class="table">
+            <div class="thead payHead">
+              <div>Fecha de cobro</div>
+              <div>Monto cobrado</div>
+              <div class="right">Recomendado apartar</div>
+              <div class="right">Libre</div>
+            </div>
+            <div id="payRows"></div>
+          </div>
+          <p class="muted tiny mt">Tip: solo escribe el monto del cobro cuando te paguen. Queda guardado para siempre.</p>
         </div>
       </div>
 
       <hr class="hr"/>
 
+      <!-- Gastos fijos -->
       <div class="rowBetween">
         <h2>Gastos fijos</h2>
         <button id="btnAddExpense" class="btn" type="button">+ Agregar gasto</button>
@@ -143,7 +195,6 @@
           <div class="right">Apartar (próximo cobro)</div>
           <div></div>
         </div>
-
         <div id="rows"></div>
       </div>
 
@@ -157,7 +208,7 @@
     </section>
 
     <footer class="muted tiny foot">
-      Si el login falla: Firebase → Authentication → Authorized domains → agrega tu dominio GitHub Pages.
+      Si el login falla: Firebase → Authentication → Authorized domains → agrega tu dominio de GitHub Pages.
     </footer>
   </div>
 

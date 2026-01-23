@@ -20,7 +20,7 @@ body{
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
 }
 
-.wrap{max-width:1120px; margin:0 auto; padding:24px;}
+.wrap{max-width:1180px; margin:0 auto; padding:24px;}
 h1{margin:0 0 6px 0; font-size:28px;}
 h2{margin:0; font-size:16px;}
 .muted{color:var(--muted)}
@@ -36,6 +36,13 @@ h2{margin:0; font-size:16px;}
   padding:16px;
   margin:14px 0;
   box-shadow: 0 12px 30px rgba(0,0,0,.35);
+}
+
+.subcard{
+  background: rgba(0,0,0,.18);
+  border: 1px solid rgba(255,255,255,.06);
+  border-radius: 16px;
+  padding: 14px;
 }
 
 .top{
@@ -108,6 +115,18 @@ input:focus, select:focus{
 }
 .trow{border-top:1px solid rgba(255,255,255,.06);}
 
+.payHead{
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+}
+.payRow{
+  display:grid;
+  grid-template-columns: 1fr 1fr 1fr 1fr;
+  gap:10px;
+  padding:10px;
+  border-top:1px solid rgba(255,255,255,.06);
+  align-items:center;
+}
+
 .tag{
   display:inline-flex; align-items:center; gap:8px;
   padding:6px 10px; border-radius:999px;
@@ -135,26 +154,33 @@ input:focus, select:focus{
   background: rgba(0,0,0,.18);
 }
 
-.profileGrid{
+/* Profiles */
+.profilesList{
   display:grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
   gap:12px;
 }
-.profileBtn{
+.profileCard{
   padding:14px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.10);
   background: rgba(0,0,0,.18);
-  color: var(--text);
-  cursor:pointer;
   display:flex;
   flex-direction:column;
-  gap:6px;
-  text-align:left;
+  gap:8px;
 }
-.profileBtn:hover{
-  border-color: rgba(74,163,255,.55);
-  box-shadow: 0 0 0 3px rgba(74,163,255,.14);
+.profileCard .row{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+}
+.profileCard .name{
+  font-weight:800;
+}
+.profileCard .meta{
+  font-size:12px;
+  color:var(--muted);
 }
 
 /* Mostrar/Ocultar password */
@@ -173,6 +199,7 @@ input:focus, select:focus{
   .grid4{grid-template-columns:1fr;}
   .grid2{grid-template-columns:1fr;}
   .thead, .trow{grid-template-columns:1fr;}
+  .payHead, .payRow{grid-template-columns:1fr;}
   .right{text-align:left;}
-  .profileGrid{grid-template-columns:1fr;}
+  .profilesList{grid-template-columns:1fr;}
 }
