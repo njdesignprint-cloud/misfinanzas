@@ -11,7 +11,7 @@
     <header class="top">
       <div>
         <h1>Mis Finanzas</h1>
-        <p class="muted">Login + Base de datos (Firebase). Perfiles múltiples y cobros con montos.</p>
+        <p class="muted">Ingresos y gastos manuales + estadísticas por año + gráficas en tiempo real.</p>
       </div>
       <div class="topActions">
         <button id="btnLogout" class="btn ghost hidden" type="button">Salir</button>
@@ -21,7 +21,7 @@
     <!-- VIEW 1: AUTH -->
     <section id="authView" class="card">
       <h2>Iniciar sesión</h2>
-      <p class="muted tiny">Usa el mismo email y password en cualquier dispositivo para ver los mismos datos.</p>
+      <p class="muted tiny">Tus datos quedan guardados en Firebase. Entras desde cualquier dispositivo.</p>
 
       <div class="grid2 mt">
         <label class="field">
@@ -51,7 +51,7 @@
       <div class="rowBetween">
         <div>
           <h2>Perfiles</h2>
-          <p class="muted tiny">Crea perfiles para Noel, Jenniffer y otros. Cada perfil guarda sus datos.</p>
+          <p class="muted tiny">Crea perfiles (Noel, Jenniffer, etc.). Cada perfil guarda moneda y datos aparte.</p>
         </div>
         <button id="btnRefreshProfiles" class="btn ghost" type="button">Actualizar</button>
       </div>
@@ -61,32 +61,37 @@
       <hr class="hr"/>
 
       <h2>Agregar nuevo perfil</h2>
-      <p class="muted tiny">Elige cada cuánto cobra su salario y su último cobro.</p>
+      <p class="muted tiny">Elige la moneda y si el salario es Mensual, podrás meter los 12 salarios del año.</p>
 
       <div class="grid4 mt">
         <label class="field">
           <span>Nombre del perfil</span>
-          <input id="newProfileName" placeholder="Ej: Mia, Ainhoa, etc." />
+          <input id="newProfileName" placeholder="Ej: Noel, Jenniffer, Mia..." />
         </label>
 
         <label class="field">
-          <span>Frecuencia de cobro</span>
-          <select id="newPayType">
-            <option value="weekly">Semanal</option>
-            <option value="15days" selected>Cada 15 días</option>
-            <option value="biweekly">Quincenal (14 días)</option>
-            <option value="monthly">Mensual</option>
+          <span>Moneda</span>
+          <select id="newCurrency">
+            <option value="USD" selected>USD ($)</option>
+            <option value="EUR">EUR (€)</option>
+            <option value="MXN">MXN ($)</option>
+            <option value="COP">COP ($)</option>
+            <option value="DOP">DOP ($)</option>
+            <option value="CAD">CAD ($)</option>
           </select>
         </label>
 
         <label class="field">
-          <span>Último cobro</span>
-          <input id="newLastPayDate" type="date"/>
+          <span>Tipo de salario</span>
+          <select id="newPayMode">
+            <option value="manual" selected>Manual (ingresos por fecha)</option>
+            <option value="monthly">Mensual (12 salarios del año)</option>
+          </select>
         </label>
 
-        <label class="field hidden" id="newMonthDayWrap">
-          <span>Día de cobro (1-31)</span>
-          <input id="newMonthDay" type="number" min="1" max="31" placeholder="Ej: 15"/>
+        <label class="field hidden" id="newPayDayWrap">
+          <span>Día de cobro mensual (1-31)</span>
+          <input id="newPayDay" type="number" min="1" max="31" placeholder="Ej: 15"/>
         </label>
       </div>
 
@@ -103,7 +108,6 @@
         <h2 id="whoTitle">Perfil</h2>
         <div class="rowActions">
           <button id="btnBackProfiles" class="btn ghost" type="button">Cambiar perfil</button>
-          <button id="btnCalc" class="btn" type="button">Calcular</button>
           <button id="btnExport" class="btn ghost" type="button">Exportar</button>
 
           <label class="btn ghost fileBtn">
@@ -111,111 +115,243 @@
             <input id="importFile" type="file" accept="application/json"/>
           </label>
 
-          <button id="btnResetProfile" class="btn danger ghost" type="button">Reset perfil</button>
+          <button id="btnResetYear" class="btn danger ghost" type="button">Reset año</button>
         </div>
       </div>
 
-      <!-- Cobro / Salario -->
+      <!-- Settings -->
       <div class="subcard mt">
         <div class="rowBetween">
-          <h2>Salario (Cobros)</h2>
-          <span class="muted tiny">Pon monto por cada cobro (se guarda en la nube)</span>
+          <h2>Configuración</h2>
+          <span id="cloudMsg" class="muted tiny"></span>
         </div>
 
         <div class="grid4 mt">
           <label class="field">
-            <span>Frecuencia de cobro</span>
-            <select id="payType">
-              <option value="weekly">Semanal</option>
-              <option value="15days">Cada 15 días</option>
-              <option value="biweekly">Quincenal (14 días)</option>
-              <option value="monthly">Mensual</option>
+            <span>Nombre</span>
+            <input id="profileName" placeholder="Nombre del perfil" />
+          </label>
+
+          <label class="field">
+            <span>Moneda</span>
+            <select id="currency">
+              <option value="USD">USD ($)</option>
+              <option value="EUR">EUR (€)</option>
+              <option value="MXN">MXN ($)</option>
+              <option value="COP">COP ($)</option>
+              <option value="DOP">DOP ($)</option>
+              <option value="CAD">CAD ($)</option>
             </select>
           </label>
 
           <label class="field">
-            <span>Último cobro</span>
-            <input id="lastPayDate" type="date"/>
-          </label>
-
-          <label class="field hidden" id="monthDayWrap">
-            <span>Día de cobro (1-31)</span>
-            <input id="monthDay" type="number" min="1" max="31" />
+            <span>Año</span>
+            <select id="yearSelect"></select>
           </label>
 
           <label class="field">
-            <span>Próximo cobro (auto)</span>
-            <input id="nextPayDate" type="text" readonly />
+            <span>Modo salario</span>
+            <select id="payMode">
+              <option value="manual">Manual</option>
+              <option value="monthly">Mensual (12 salarios)</option>
+            </select>
           </label>
+        </div>
+
+        <div class="grid4 mt hidden" id="payDayWrap">
+          <label class="field">
+            <span>Día de cobro mensual (1-31)</span>
+            <input id="payDay" type="number" min="1" max="31"/>
+          </label>
+          <div></div><div></div><div></div>
+        </div>
+      </div>
+
+      <!-- Monthly salaries -->
+      <div class="subcard mt hidden" id="monthlyPanel">
+        <div class="rowBetween">
+          <h2>Salarios mensuales del año</h2>
+          <span class="muted tiny">Esto crea/actualiza 12 ingresos del año automáticamente.</span>
+        </div>
+        <div id="monthlyGrid" class="monthGrid mt"></div>
+        <div class="rowActions mt">
+          <button id="btnSaveMonthly" class="btn" type="button">Guardar salarios del año</button>
+        </div>
+        <div id="monthlyMsg" class="muted tiny mt"></div>
+      </div>
+
+      <!-- Dashboard -->
+      <div class="subcard mt">
+        <div class="rowBetween">
+          <h2>Dashboard del año</h2>
+          <span class="muted tiny">Se actualiza en tiempo real</span>
         </div>
 
         <div class="miniRow mt">
           <div class="pill">
-            <span class="muted">Urgente (vence antes del próximo cobro)</span>
-            <span id="urgent" class="strong">$0</span>
+            <span class="muted">Total cobrado</span>
+            <span id="sumIncome" class="strong">$0</span>
           </div>
           <div class="pill">
-            <span class="muted">Apartar en el próximo cobro</span>
-            <span id="nextSave" class="strong">$0</span>
+            <span class="muted">Total gastado</span>
+            <span id="sumExpense" class="strong">$0</span>
           </div>
           <div class="pill">
-            <span class="muted">Libre (si pones monto del próximo cobro)</span>
-            <span id="free" class="strong muted">—</span>
+            <span class="muted">Libre / Ahorro (neto)</span>
+            <span id="sumNet" class="strong">$0</span>
           </div>
         </div>
 
-        <div class="mt">
-          <div class="table">
-            <div class="thead payHead">
-              <div>Fecha de cobro</div>
-              <div>Monto cobrado</div>
-              <div class="right">Recomendado apartar</div>
-              <div class="right">Libre</div>
-            </div>
-            <div id="payRows"></div>
+        <div class="charts mt">
+          <div class="chartCard">
+            <div class="muted tiny">Ingresos vs Gastos por mes</div>
+            <canvas id="lineChart" height="130"></canvas>
           </div>
-          <p class="muted tiny mt">Tip: escribe el monto cuando te paguen. Queda guardado para siempre.</p>
+          <div class="chartCard">
+            <div class="muted tiny">Gastos por categoría</div>
+            <canvas id="donutChart" height="130"></canvas>
+          </div>
         </div>
       </div>
 
       <hr class="hr"/>
 
-      <!-- Gastos fijos -->
+      <!-- Add Income -->
       <div class="rowBetween">
-        <h2>Gastos fijos</h2>
-        <button id="btnAddExpense" class="btn" type="button">+ Agregar gasto</button>
+        <h2>Ingresos (manual)</h2>
+        <span class="muted tiny">Agrega ingresos con fecha + monto</span>
+      </div>
+
+      <div class="grid4 mt">
+        <label class="field">
+          <span>Fecha</span>
+          <input id="incomeDate" type="date"/>
+        </label>
+        <label class="field">
+          <span>Monto</span>
+          <input id="incomeAmount" inputmode="decimal" placeholder="Ej: 1200"/>
+        </label>
+        <label class="field">
+          <span>Nota (opcional)</span>
+          <input id="incomeNote" placeholder="Ej: Cobro semana 1"/>
+        </label>
+        <div class="field">
+          <span>&nbsp;</span>
+          <button id="btnAddIncome" class="btn" type="button">+ Agregar ingreso</button>
+        </div>
       </div>
 
       <div class="table mt">
-        <div class="thead">
-          <div>Gasto</div>
-          <div>Monto</div>
-          <div>Frecuencia</div>
-          <div>Próximo pago</div>
-          <div class="right">Apartar (próximo cobro)</div>
+        <div class="thead listHeadIncome">
+          <div>Fecha</div>
+          <div>Nota</div>
+          <div class="right">Monto</div>
           <div></div>
         </div>
-        <div id="rows"></div>
+        <div id="incomeRows"></div>
       </div>
 
-      <div class="rowBetween mt">
-        <h2>Plan de próximos cobros</h2>
-        <span class="muted tiny">Estimado: cuánto apartar en cada cobro</span>
-      </div>
-      <div class="plan mt" id="plan"></div>
+      <hr class="hr"/>
 
-      <div id="cloudMsg" class="muted tiny mt"></div>
+      <!-- Fixed templates -->
+      <div class="rowBetween">
+        <h2>Gastos fijos (plantillas)</h2>
+        <span class="muted tiny">Guárdalos una vez (monto + día del mes) y aplícalos al año/mes</span>
+      </div>
+
+      <div class="grid5 mt">
+        <label class="field">
+          <span>Nombre</span>
+          <input id="fixedName" placeholder="Ej: Renta"/>
+        </label>
+        <label class="field">
+          <span>Categoría</span>
+          <input id="fixedCategory" placeholder="Ej: Vivienda"/>
+        </label>
+        <label class="field">
+          <span>Monto</span>
+          <input id="fixedAmount" inputmode="decimal" placeholder="Ej: 1800"/>
+        </label>
+        <label class="field">
+          <span>Día del mes (1-31)</span>
+          <input id="fixedDay" type="number" min="1" max="31" placeholder="Ej: 1"/>
+        </label>
+        <div class="field">
+          <span>&nbsp;</span>
+          <button id="btnAddFixed" class="btn" type="button">+ Guardar fijo</button>
+        </div>
+      </div>
+
+      <div class="rowActions mt">
+        <button id="btnApplyFixedYear" class="btn ghost" type="button">Aplicar fijos al año seleccionado</button>
+      </div>
+
+      <div class="table mt">
+        <div class="thead listHeadFixed">
+          <div>Nombre</div>
+          <div>Categoría</div>
+          <div>Día</div>
+          <div class="right">Monto</div>
+          <div></div>
+        </div>
+        <div id="fixedRows"></div>
+      </div>
+
+      <hr class="hr"/>
+
+      <!-- Add Expense -->
+      <div class="rowBetween">
+        <h2>Gastos (manual)</h2>
+        <span class="muted tiny">Agrega gastos por fecha y categoría</span>
+      </div>
+
+      <div class="grid5 mt">
+        <label class="field">
+          <span>Fecha</span>
+          <input id="expDate" type="date"/>
+        </label>
+        <label class="field">
+          <span>Nombre</span>
+          <input id="expName" placeholder="Ej: Gasolina"/>
+        </label>
+        <label class="field">
+          <span>Categoría</span>
+          <input id="expCategory" placeholder="Ej: Transporte"/>
+        </label>
+        <label class="field">
+          <span>Monto</span>
+          <input id="expAmount" inputmode="decimal" placeholder="Ej: 45"/>
+        </label>
+        <div class="field">
+          <span>&nbsp;</span>
+          <button id="btnAddExpense" class="btn" type="button">+ Agregar gasto</button>
+        </div>
+      </div>
+
+      <div class="table mt">
+        <div class="thead listHeadExpense">
+          <div>Fecha</div>
+          <div>Nombre</div>
+          <div>Categoría</div>
+          <div class="right">Monto</div>
+          <div></div>
+        </div>
+        <div id="expenseRows"></div>
+      </div>
+
+      <footer class="muted tiny foot">
+        Si te pide permisos: Firestore Rules deben permitir leer/escribir en subcolecciones (te dejo las rules abajo).
+      </footer>
     </section>
-
-    <footer class="muted tiny foot">
-      Si el login falla: Firebase → Authentication → Authorized domains → agrega tu dominio de GitHub Pages.
-    </footer>
   </div>
 
   <!-- Firebase CDN (para GitHub Pages) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
   <script src="app.js"></script>
 </body>

@@ -1,78 +1,40 @@
 /***********************
- * Utils (anti-crash)
+ * Anti-crash helpers
  ***********************/
 const $ = (id) => document.getElementById(id);
-const on = (el, evt, fn) => { if (el) el.addEventListener(evt, fn); };
-const setText = (el, txt) => { if (el) el.textContent = txt; };
-const toggleHidden = (el, hidden) => { if (el) el.classList.toggle("hidden", hidden); };
+const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
+const setText = (el, txt) => el && (el.textContent = txt);
+const toggleHidden = (el, hidden) => el && el.classList.toggle("hidden", hidden);
 
 function uid() {
   return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
-}
-function startOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0,0,0,0);
-  return x;
-}
-function toISODate(d) {
-  const x = new Date(d);
-  const yyyy = x.getFullYear();
-  const mm = String(x.getMonth() + 1).padStart(2, "0");
-  const dd = String(x.getDate()).padStart(2, "0");
-  return `${yyyy}-${mm}-${dd}`;
 }
 function parseNumber(v) {
   const cleaned = String(v ?? "").replace(/,/g, "").trim();
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : 0;
 }
-function hasValue(str) {
-  return String(str ?? "").trim().length > 0;
+function hasValue(v){ return String(v ?? "").trim().length > 0; }
+function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
+
+function toDateAtLocalMidnight(dateStr){
+  // dateStr: YYYY-MM-DD
+  const [y,m,d] = dateStr.split("-").map(Number);
+  return new Date(y, (m||1)-1, d||1, 0,0,0,0);
 }
-function fmtMoney(n) {
-  const v = Number.isFinite(n) ? n : 0;
-  return v.toLocaleString(undefined, { style: "currency", currency: "USD" });
+function isoDateFromDate(d){
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth()+1).padStart(2,"0");
+  const dd = String(d.getDate()).padStart(2,"0");
+  return `${yyyy}-${mm}-${dd}`;
 }
-function fmtDate(d) {
-  return new Intl.DateTimeFormat("es-US", { year:"numeric", month:"short", day:"2-digit" }).format(d);
-}
-function addDays(date, days) {
-  const d = new Date(date);
-  d.setDate(d.getDate() + days);
-  return d;
-}
-function addMonths(date, months) {
-  const d = new Date(date);
-  const day = d.getDate();
-  d.setMonth(d.getMonth() + months);
-  const lastDay = new Date(d.getFullYear(), d.getMonth() + 1, 0).getDate();
-  if (day > lastDay) d.setDate(lastDay);
-  return d;
-}
-function addYears(date, years) {
-  const d = new Date(date);
-  d.setFullYear(d.getFullYear() + years);
-  return d;
-}
-function clampDayOfMonth(year, monthIndex, day) {
-  const last = new Date(year, monthIndex + 1, 0).getDate();
-  return Math.min(Math.max(1, day), last);
-}
-function makeMonthlyDateNear(year, monthIndex, monthDay) {
-  const d = clampDayOfMonth(year, monthIndex, monthDay);
-  return startOfDay(new Date(year, monthIndex, d));
-}
-function escapeHtml(s) {
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+function monthIndexFromDate(d){ return d.getMonth(); } // 0..11
+function monthName(i){
+  return ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][i] || "";
 }
 
 /***********************
- * Firebase Config (TU PROYECTO)
+ * Firebase
  ***********************/
 const firebaseConfig = {
   apiKey: "AIzaSyATpb8_S2JhY1T2Lb8lzn3_544C7Kqd4OI",
@@ -84,43 +46,27 @@ const firebaseConfig = {
   measurementId: "G-ZBVLVMQKDJ"
 };
 
-// Si Firebase scripts no cargaron, muestro error visible
 if (!window.firebase) {
   const msg = $("authMsg");
-  if (msg) msg.textContent = "ERROR: Firebase no cargó. Revisa que index.html tenga los 3 scripts de Firebase antes de app.js.";
+  if (msg) msg.textContent = "ERROR: Firebase no cargó. Revisa scripts en index.html.";
   throw new Error("Firebase not loaded");
 }
-
-// Init Firebase (evita doble init)
 if (!firebase.apps.length) firebase.initializeApp(firebaseConfig);
+
 const auth = firebase.auth();
 const db = firebase.firestore();
-
-/***********************
- * Constants
- ***********************/
-const BILL_FREQ = [
-  { id: "monthly",  label: "Mensual",      type: "months", step: 1 },
-  { id: "weekly",   label: "Semanal",      type: "days",   step: 7 },
-  { id: "q15",      label: "Cada 15 días", type: "days",   step: 15 },
-  { id: "yearly",   label: "Anual",        type: "years",  step: 1 },
-];
-
-const PAY_TYPES = {
-  weekly:   { label: "Semanal",          mode: "days",   step: 7 },
-  "15days": { label: "Cada 15 días",     mode: "days",   step: 15 },
-  biweekly: { label: "Quincenal (14)",   mode: "days",   step: 14 },
-  monthly:  { label: "Mensual",          mode: "months", step: 1 },
-};
+const TS = firebase.firestore.Timestamp;
 
 /***********************
  * Elements
  ***********************/
 const els = {
+  // Views
   authView: $("authView"),
   profileView: $("profileView"),
   appView: $("appView"),
 
+  // Auth
   authEmail: $("authEmail"),
   authPass: $("authPass"),
   btnTogglePass: $("btnTogglePass"),
@@ -129,733 +75,915 @@ const els = {
   authMsg: $("authMsg"),
   btnLogout: $("btnLogout"),
 
+  // Profiles
   profilesList: $("profilesList"),
   btnRefreshProfiles: $("btnRefreshProfiles"),
   newProfileName: $("newProfileName"),
-  newPayType: $("newPayType"),
-  newLastPayDate: $("newLastPayDate"),
-  newMonthDayWrap: $("newMonthDayWrap"),
-  newMonthDay: $("newMonthDay"),
+  newCurrency: $("newCurrency"),
+  newPayMode: $("newPayMode"),
+  newPayDayWrap: $("newPayDayWrap"),
+  newPayDay: $("newPayDay"),
   btnCreateProfile: $("btnCreateProfile"),
   profilesMsg: $("profilesMsg"),
 
+  // App header
   whoTitle: $("whoTitle"),
   btnBackProfiles: $("btnBackProfiles"),
-
-  btnCalc: $("btnCalc"),
   btnExport: $("btnExport"),
   importFile: $("importFile"),
-  btnResetProfile: $("btnResetProfile"),
-
-  payType: $("payType"),
-  lastPayDate: $("lastPayDate"),
-  monthDayWrap: $("monthDayWrap"),
-  monthDay: $("monthDay"),
-  nextPayDate: $("nextPayDate"),
-
-  urgent: $("urgent"),
-  nextSave: $("nextSave"),
-  free: $("free"),
-
-  payRows: $("payRows"),
-
-  btnAddExpense: $("btnAddExpense"),
-  rows: $("rows"),
-  plan: $("plan"),
+  btnResetYear: $("btnResetYear"),
   cloudMsg: $("cloudMsg"),
+
+  // Settings
+  profileName: $("profileName"),
+  currency: $("currency"),
+  yearSelect: $("yearSelect"),
+  payMode: $("payMode"),
+  payDayWrap: $("payDayWrap"),
+  payDay: $("payDay"),
+
+  // Monthly panel
+  monthlyPanel: $("monthlyPanel"),
+  monthlyGrid: $("monthlyGrid"),
+  btnSaveMonthly: $("btnSaveMonthly"),
+  monthlyMsg: $("monthlyMsg"),
+
+  // Dashboard
+  sumIncome: $("sumIncome"),
+  sumExpense: $("sumExpense"),
+  sumNet: $("sumNet"),
+  lineChart: $("lineChart"),
+  donutChart: $("donutChart"),
+
+  // Income
+  incomeDate: $("incomeDate"),
+  incomeAmount: $("incomeAmount"),
+  incomeNote: $("incomeNote"),
+  btnAddIncome: $("btnAddIncome"),
+  incomeRows: $("incomeRows"),
+
+  // Fixed templates
+  fixedName: $("fixedName"),
+  fixedCategory: $("fixedCategory"),
+  fixedAmount: $("fixedAmount"),
+  fixedDay: $("fixedDay"),
+  btnAddFixed: $("btnAddFixed"),
+  btnApplyFixedYear: $("btnApplyFixedYear"),
+  fixedRows: $("fixedRows"),
+
+  // Expense
+  expDate: $("expDate"),
+  expName: $("expName"),
+  expCategory: $("expCategory"),
+  expAmount: $("expAmount"),
+  btnAddExpense: $("btnAddExpense"),
+  expenseRows: $("expenseRows"),
 };
 
+/***********************
+ * State
+ ***********************/
 let currentUser = null;
 let currentProfileId = null;
-let state = null;
+
+let meta = null;            // profile doc
+let incomes = [];           // year incomes (from snapshot)
+let expenses = [];          // year expenses (from snapshot)
+let fixedTemplates = [];    // templates (from snapshot)
+
+let unsubIncome = null;
+let unsubExpense = null;
+let unsubFixed = null;
+
+let lineChart = null;
+let donutChart = null;
 
 /***********************
- * Views
+ * Firestore paths
  ***********************/
-function show(view) {
+function profileRef(uid, pid){ return db.collection("users").doc(uid).collection("profiles").doc(pid); }
+function incomesCol(uid, pid){ return profileRef(uid,pid).collection("incomes"); }
+function expensesCol(uid, pid){ return profileRef(uid,pid).collection("expenses"); }
+function fixedCol(uid, pid){ return profileRef(uid,pid).collection("fixed"); }
+
+function show(view){
   toggleHidden(els.authView, view !== "auth");
   toggleHidden(els.profileView, view !== "profiles");
   toggleHidden(els.appView, view !== "app");
   toggleHidden(els.btnLogout, view === "auth");
 }
 
-/***********************
- * Firestore paths
- ***********************/
-function profilesColRef(uid) {
-  return db.collection("users").doc(uid).collection("profiles");
+function fmtMoneyByCurrency(n){
+  const c = meta?.currency || "USD";
+  const v = Number.isFinite(n) ? n : 0;
+  try {
+    return v.toLocaleString(undefined, { style:"currency", currency: c });
+  } catch {
+    return `${c} ${v.toFixed(2)}`;
+  }
 }
-function profileDocRef(uid, profileId) {
-  return profilesColRef(uid).doc(profileId);
+
+function nowYear(){
+  return new Date().getFullYear();
+}
+
+function yearRangeTs(year){
+  const start = new Date(year,0,1,0,0,0,0);
+  const end = new Date(year+1,0,1,0,0,0,0);
+  return { start: TS.fromDate(start), end: TS.fromDate(end) };
+}
+
+function setCloudMsg(txt){
+  setText(els.cloudMsg, txt || "");
 }
 
 /***********************
- * Default data
+ * Default profiles
  ***********************/
-function defaultExpensesList() {
-  return [
-    { id: uid(), name: "Renta",         amount: "", freqId: "monthly", dueDate: "" },
-    { id: uid(), name: "Auto",          amount: "", freqId: "monthly", dueDate: "" },
-    { id: uid(), name: "Seguro Auto",   amount: "", freqId: "monthly", dueDate: "" },
-    { id: uid(), name: "Seguro Medico", amount: "", freqId: "monthly", dueDate: "" },
-    { id: uid(), name: "Telefonos",     amount: "", freqId: "monthly", dueDate: "" },
-    { id: uid(), name: "Colegio Mia",   amount: "", freqId: "monthly", dueDate: "" },
-    { id: uid(), name: "Mercado",       amount: "", freqId: "monthly", dueDate: "" },
-    { id: uid(), name: "Ahinoa",        amount: "", freqId: "monthly", dueDate: "" },
-    { id: uid(), name: "Mama",          amount: "", freqId: "monthly", dueDate: "" },
-  ];
-}
+async function ensureDefaultProfiles(uid){
+  const snap = await db.collection("users").doc(uid).collection("profiles").get();
+  if (!snap.empty) return;
 
-function defaultProfileState(profileId, displayName, payType="15days", lastPayDate="2026-01-09", monthDay=9) {
-  return {
-    profileId,
-    displayName: displayName || "Perfil",
-    paySchedule: { type: payType, monthDay: Number(monthDay) || 1 },
-    lastPayDate: lastPayDate || "",
-    paychecks: {}, // {"YYYY-MM-DD": "1200"}
-    expenses: defaultExpensesList(),
+  await profileRef(uid,"noel").set({
+    displayName: "Noel",
+    currency: "USD",
+    payMode: "manual",     // manual incomes
+    payDay: 15,            // for monthly mode if ever used
+    createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
-  };
+  }, { merge:true });
+
+  await profileRef(uid,"jenniffer").set({
+    displayName: "Jenniffer",
+    currency: "USD",
+    payMode: "manual",
+    payDay: 15,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge:true });
 }
 
-/***********************
- * Salary schedule
- ***********************/
-function computeNextPayDateBySchedule(schedule, lastPayDateStr) {
-  const today = startOfDay(new Date());
-  const payType = schedule?.type || "15days";
-  const def = PAY_TYPES[payType] || PAY_TYPES["15days"];
-
-  if (def.mode === "days") {
-    if (!lastPayDateStr) return null;
-    let d = startOfDay(new Date(lastPayDateStr));
-    if (Number.isNaN(d.getTime())) return null;
-    for (let i=0; i<800; i++) {
-      if (d >= today) return d;
-      d = startOfDay(addDays(d, def.step));
-    }
-    return d;
-  }
-
-  const monthDay = Number(schedule?.monthDay) || (lastPayDateStr ? new Date(lastPayDateStr).getDate() : 1);
-  const now = new Date();
-  const cur = makeMonthlyDateNear(now.getFullYear(), now.getMonth(), monthDay);
-  if (cur >= today) return cur;
-  return startOfDay(addMonths(cur, 1));
+async function listProfiles(uid){
+  const snap = await db.collection("users").doc(uid).collection("profiles").get();
+  return snap.docs.map(d => ({ id:d.id, ...d.data() }));
 }
 
-function generatePayDates(schedule, lastPayDateStr, count = 8) {
-  const out = [];
-  const next = computeNextPayDateBySchedule(schedule, lastPayDateStr);
-  if (!next) return out;
-
-  const payType = schedule?.type || "15days";
-  const def = PAY_TYPES[payType] || PAY_TYPES["15days"];
-
-  let d = startOfDay(next);
-  for (let i=0; i<count; i++) {
-    out.push(startOfDay(d));
-    d = def.mode === "days" ? startOfDay(addDays(d, def.step)) : startOfDay(addMonths(d, def.step));
-  }
-  return out;
-}
-
-/***********************
- * Bills schedule
- ***********************/
-function advanceDueDate(dueDateStr, freqId, refDate) {
-  let due = startOfDay(new Date(dueDateStr));
-  if (Number.isNaN(due.getTime())) return null;
-
-  const f = BILL_FREQ.find(x => x.id === freqId) || BILL_FREQ[0];
-  for (let i=0; i<80; i++) {
-    if (due >= refDate) return due;
-    if (f.type === "days") due = startOfDay(addDays(due, f.step));
-    if (f.type === "months") due = startOfDay(addMonths(due, f.step));
-    if (f.type === "years") due = startOfDay(addYears(due, f.step));
-  }
-  return due;
-}
-
-/***********************
- * Cloud load/save
- ***********************/
-async function listProfilesFromCloud(uid) {
-  const snap = await profilesColRef(uid).get();
-  return snap.docs.map(d => ({ id: d.id, ...d.data() }));
-}
-
-async function ensureDefaultProfiles(uid) {
-  const existing = await listProfilesFromCloud(uid);
-  if (existing.length > 0) return;
-
-  await profileDocRef(uid, "noel").set(defaultProfileState("noel", "Noel", "15days", "2026-01-09", 9), { merge: true });
-  await profileDocRef(uid, "jenniffer").set(defaultProfileState("jenniffer", "Jenniffer", "weekly", "", 1), { merge: true });
-}
-
-async function loadProfile(uid, profileId) {
-  const ref = profileDocRef(uid, profileId);
-  const snap = await ref.get();
-
-  if (!snap.exists) {
-    const fresh = defaultProfileState(profileId, profileId);
-    await ref.set(fresh, { merge: true });
-    return fresh;
-  }
-
-  const data = snap.data() || {};
-  const schedule = data.paySchedule || { type: data.payType || "15days", monthDay: data.monthDay || 1 };
-
-  return {
-    profileId,
-    displayName: data.displayName ?? profileId,
-    paySchedule: { type: schedule.type || "15days", monthDay: Number(schedule.monthDay) || 1 },
-    lastPayDate: data.lastPayDate ?? "",
-    paychecks: (data.paychecks && typeof data.paychecks === "object") ? data.paychecks : {},
-    expenses: Array.isArray(data.expenses) ? data.expenses.map(e => ({
-      id: e.id || uid(),
-      name: e.name ?? "",
-      amount: e.amount ?? "",
-      freqId: BILL_FREQ.some(f => f.id === e.freqId) ? e.freqId : "monthly",
-      dueDate: e.dueDate ?? "",
-    })) : defaultExpensesList(),
-    updatedAt: data.updatedAt ?? new Date().toISOString(),
-  };
-}
-
-let saveTimer = null;
-function saveToCloudDebounced() {
-  clearTimeout(saveTimer);
-  saveTimer = setTimeout(async () => {
-    try {
-      if (!currentUser || !currentProfileId || !state) return;
-      state.updatedAt = new Date().toISOString();
-      await profileDocRef(currentUser.uid, currentProfileId).set(state, { merge: true });
-      setText(els.cloudMsg, `Guardado en la nube: ${new Date().toLocaleTimeString()}`);
-    } catch {
-      setText(els.cloudMsg, "No pude guardar (revisa Rules / dominio / login).");
-    }
-  }, 250);
-}
-
-/***********************
- * Calculations
- ***********************/
-function compute(state) {
-  const today = startOfDay(new Date());
-  const nextPay = computeNextPayDateBySchedule(state.paySchedule, state.lastPayDate);
-  const payDates = generatePayDates(state.paySchedule, state.lastPayDate, 8);
-
-  const expenses = state.expenses.map(e => {
-    const amountNum = parseNumber(e.amount);
-    const due = e.dueDate ? advanceDueDate(e.dueDate, e.freqId, today) : null;
-    const valid = !!due && amountNum > 0;
-    const urgent = (valid && nextPay && due < nextPay) ? amountNum : 0;
-    return { ...e, amountNum, due, valid, urgent };
-  });
-
-  const perNextPay = new Map();
-  let urgentTotal = 0;
-  let nextSaveTotal = 0;
-
-  if (nextPay) {
-    for (const ex of expenses) {
-      urgentTotal += ex.urgent;
-
-      if (!ex.valid || ex.due < nextPay) {
-        perNextPay.set(ex.id, 0);
-        continue;
-      }
-      const count = payDates.filter(d => d <= ex.due).length;
-      const n = Math.max(1, count);
-      const per = ex.amountNum / n;
-      perNextPay.set(ex.id, per);
-      nextSaveTotal += per;
-    }
-  }
-
-  const plan = [];
-  if (nextPay) {
-    const sim = expenses.map(ex => ({
-      freqId: ex.freqId,
-      amount: ex.amountNum,
-      due: ex.due ? new Date(ex.due) : null,
-      valid: ex.valid,
-      remaining: ex.amountNum,
-    }));
-
-    for (let i=0; i<payDates.length; i++) {
-      const payDay = payDates[i];
-      let total = 0;
-
-      for (const ex of sim) {
-        if (!ex.valid || !ex.due) continue;
-
-        const ref = startOfDay(payDay);
-        while (ex.due <= ref) {
-          ex.remaining = ex.amount;
-          ex.due = advanceDueDate(toISODate(ex.due), ex.freqId, addDays(ref, 1));
-          if (!ex.due) break;
-        }
-        if (!ex.due) continue;
-
-        const remainingPaychecks = payDates.slice(i).filter(d => d <= ex.due).length;
-        if (remainingPaychecks <= 0) continue;
-
-        const contribution = ex.remaining / remainingPaychecks;
-        ex.remaining = Math.max(0, ex.remaining - contribution);
-        total += contribution;
-      }
-
-      plan.push({ date: payDay, total });
-    }
-  }
-
-  let free = null;
-  if (nextPay) {
-    const key = toISODate(nextPay);
-    const amountStr = state.paychecks?.[key];
-    if (hasValue(amountStr)) free = parseNumber(amountStr) - (plan[0]?.total || 0);
-  }
-
-  return { nextPay, payDates, expenses, perNextPay, urgentTotal, nextSaveTotal, plan, free };
-}
-
-/***********************
- * UI builders
- ***********************/
-function setMonthlyVisibility(selectEl, wrapEl) {
-  if (!selectEl || !wrapEl) return;
-  wrapEl.classList.toggle("hidden", selectEl.value !== "monthly");
-}
-
-function findRowById(container, id) {
-  if (!container) return null;
-  for (const ch of container.children) {
-    if (ch.dataset?.id === id) return ch;
-  }
-  return null;
-}
-
-function createExpenseRow(expense) {
-  const row = document.createElement("div");
-  row.className = "trow";
-  row.dataset.id = expense.id;
-
-  row.innerHTML = `
-    <div>
-      <input class="name" placeholder="Nombre del gasto" />
-      <div class="badges"></div>
-    </div>
-
-    <input class="amount" placeholder="Ej: 180" inputmode="decimal" />
-    <select class="freq"></select>
-    <input class="due" type="date" />
-    <div class="right strong perPay">$0</div>
-    <button class="btn danger ghost del" title="Eliminar" type="button">✕</button>
-  `;
-
-  const nameEl = row.querySelector(".name");
-  const amountEl = row.querySelector(".amount");
-  const freqEl = row.querySelector(".freq");
-  const dueEl = row.querySelector(".due");
-  const delEl = row.querySelector(".del");
-
-  nameEl.value = expense.name ?? "";
-  amountEl.value = expense.amount ?? "";
-  dueEl.value = expense.dueDate ?? "";
-
-  freqEl.innerHTML = BILL_FREQ.map(f =>
-    `<option value="${f.id}" ${f.id === expense.freqId ? "selected" : ""}>${f.label}</option>`
-  ).join("");
-
-  // NO re-render mientras tecleas
-  on(nameEl, "input", () => updateExpense(expense.id, { name: nameEl.value }, false));
-  on(amountEl, "input", () => updateExpense(expense.id, { amount: amountEl.value }, false));
-
-  on(freqEl, "change", () => updateExpense(expense.id, { freqId: freqEl.value }, true));
-  on(dueEl, "change", () => updateExpense(expense.id, { dueDate: dueEl.value }, true));
-  on(delEl, "click", () => deleteExpense(expense.id));
-
-  return row;
-}
-
-function rebuildExpensesTable() {
-  if (!els.rows) return;
-  els.rows.innerHTML = "";
-  for (const ex of state.expenses) els.rows.appendChild(createExpenseRow(ex));
-}
-
-function updateExpense(id, patch, fullRefresh) {
-  state.expenses = state.expenses.map(e => (e.id === id ? { ...e, ...patch } : e));
-  saveToCloudDebounced();
-  fullRefresh ? refreshAll() : refreshCalculationsOnly();
-}
-
-function deleteExpense(id) {
-  state.expenses = state.expenses.filter(e => e.id !== id);
-  saveToCloudDebounced();
-  const row = findRowById(els.rows, id);
-  if (row) row.remove();
-  refreshAll();
-}
-
-function rebuildPaychecksTable(plan, payDates) {
-  if (!els.payRows) return;
-  els.payRows.innerHTML = "";
-
-  const mapPlan = new Map(plan.map(p => [toISODate(p.date), p.total]));
-
-  for (const d of payDates) {
-    const key = toISODate(d);
-    const recommended = mapPlan.get(key) || 0;
-    const amountStr = state.paychecks?.[key] ?? "";
-
-    const row = document.createElement("div");
-    row.className = "payRow";
-    row.dataset.id = key;
-
-    row.innerHTML = `
-      <div class="strong">${fmtDate(d)}</div>
-      <div><input class="payAmt" inputmode="decimal" placeholder="Monto" /></div>
-      <div class="right strong rec">${fmtMoney(recommended)}</div>
-      <div class="right strong free muted">—</div>
-    `;
-
-    const amtEl = row.querySelector(".payAmt");
-    const freeEl = row.querySelector(".free");
-    amtEl.value = amountStr;
-
-    const updateFreeInline = () => {
-      if (!hasValue(amtEl.value)) {
-        freeEl.textContent = "—";
-        freeEl.className = "right strong free muted";
-        return;
-      }
-      const free = parseNumber(amtEl.value) - recommended;
-      freeEl.textContent = fmtMoney(free);
-      freeEl.className = "right strong free " + (free >= 0 ? "ok" : "bad");
-    };
-
-    on(amtEl, "input", () => {
-      state.paychecks[key] = amtEl.value;
-      saveToCloudDebounced();
-      updateFreeInline();
-
-      const next = computeNextPayDateBySchedule(state.paySchedule, state.lastPayDate);
-      if (next && toISODate(next) === key) {
-        const f = parseNumber(amtEl.value) - recommended;
-        setText(els.free, hasValue(amtEl.value) ? fmtMoney(f) : "—");
-        if (els.free) els.free.className = "strong " + (hasValue(amtEl.value) ? (f >= 0 ? "ok" : "bad") : "muted");
-      }
-    });
-
-    updateFreeInline();
-    els.payRows.appendChild(row);
-  }
-}
-
-function refreshHeaderInputs() {
-  setText(els.whoTitle, `Perfil: ${state.displayName}`);
-  if (els.payType) els.payType.value = state.paySchedule?.type || "15days";
-  if (els.lastPayDate) els.lastPayDate.value = state.lastPayDate ?? "";
-
-  const md = Number(state.paySchedule?.monthDay) || (state.lastPayDate ? new Date(state.lastPayDate).getDate() : 1);
-  if (els.monthDay) els.monthDay.value = String(md);
-
-  setMonthlyVisibility(els.payType, els.monthDayWrap);
-}
-
-function refreshCalculationsOnly() {
-  const c = compute(state);
-
-  if (els.nextPayDate) els.nextPayDate.value = c.nextPay ? fmtDate(c.nextPay) : "— pon tu último cobro";
-  setText(els.urgent, fmtMoney(c.urgentTotal));
-  setText(els.nextSave, fmtMoney(c.nextSaveTotal));
-
-  if (!c.nextPay) {
-    setText(els.free, "—");
-    if (els.free) els.free.className = "strong muted";
-  } else {
-    const key = toISODate(c.nextPay);
-    const amt = state.paychecks?.[key];
-    if (!hasValue(amt)) {
-      setText(els.free, "—");
-      if (els.free) els.free.className = "strong muted";
-    } else {
-      const f = parseNumber(amt) - (c.plan[0]?.total || 0);
-      setText(els.free, fmtMoney(f));
-      if (els.free) els.free.className = "strong " + (f >= 0 ? "ok" : "bad");
-    }
-  }
-
-  // Per expense
-  for (const ex of c.expenses) {
-    const row = findRowById(els.rows, ex.id);
-    if (!row) continue;
-
-    const per = row.querySelector(".perPay");
-    if (per) per.textContent = fmtMoney(c.perNextPay.get(ex.id) || 0);
-
-    const badges = row.querySelector(".badges");
-    if (badges) badges.innerHTML = "";
-
-    const dueInput = row.querySelector(".due");
-    if (dueInput) dueInput.classList.toggle("warn", !ex.due);
-
-    if (ex.urgent > 0 && c.nextPay && badges) {
-      const b = document.createElement("div");
-      b.className = "tag";
-      b.textContent = `⚠ Urgente: ${fmtMoney(ex.urgent)}`;
-      badges.appendChild(b);
-    }
-  }
-
-  // Plan
-  if (!els.plan) return;
-  if (!c.nextPay) {
-    els.plan.innerHTML = `<div class="planRow"><span class="muted">Define “Último cobro” para ver el plan.</span><span class="muted">—</span></div>`;
-  } else {
-    els.plan.innerHTML = c.plan.map(x => `
-      <div class="planRow">
-        <span>${fmtDate(x.date)}</span>
-        <span class="strong">${fmtMoney(x.total)}</span>
-      </div>
-    `).join("");
-  }
-
-  rebuildPaychecksTable(c.plan, c.payDates);
-}
-
-function refreshAll() {
-  refreshHeaderInputs();
-  refreshCalculationsOnly();
-}
-
-/***********************
- * Profiles
- ***********************/
-function profileCardHTML(p) {
+function profileCardHTML(p){
   const name = p.displayName || p.id;
-  const type = p.paySchedule?.type || "15days";
-  const label = PAY_TYPES[type]?.label || "Cada 15 días";
+  const cur = p.currency || "USD";
+  const mode = p.payMode === "monthly" ? "Mensual" : "Manual";
   return `
     <div class="profileCard">
       <div class="row">
         <div>
           <div class="name">${escapeHtml(name)}</div>
-          <div class="meta">${escapeHtml(label)}</div>
+          <div class="meta">${escapeHtml(mode)} · ${escapeHtml(cur)}</div>
         </div>
         <button class="btn" data-open="${escapeHtml(p.id)}" type="button">Abrir</button>
       </div>
     </div>
   `;
 }
-
-async function refreshProfilesList() {
-  if (!currentUser) return;
-  setText(els.profilesMsg, "Cargando perfiles…");
-
-  try {
-    await ensureDefaultProfiles(currentUser.uid);
-    const profiles = await listProfilesFromCloud(currentUser.uid);
-
-    if (els.profilesList) {
-      els.profilesList.innerHTML = profiles.map(profileCardHTML).join("");
-      els.profilesList.querySelectorAll("[data-open]").forEach(btn => {
-        on(btn, "click", async () => openProfile(btn.getAttribute("data-open")));
-      });
-    }
-
-    setText(els.profilesMsg, profiles.length ? "" : "No hay perfiles.");
-  } catch (e) {
-    setText(els.profilesMsg, "No pude cargar perfiles (revisa Rules de Firestore).");
-  }
+function escapeHtml(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
 }
 
-function slugifyName(name) {
-  const base = String(name || "perfil")
-    .trim()
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/(^-|-$)/g, "");
+async function refreshProfilesUI(){
+  if (!currentUser) return;
+  setText(els.profilesMsg, "Cargando perfiles…");
+  await ensureDefaultProfiles(currentUser.uid);
+  const profiles = await listProfiles(currentUser.uid);
+
+  els.profilesList.innerHTML = profiles.map(profileCardHTML).join("");
+  els.profilesList.querySelectorAll("[data-open]").forEach(btn => {
+    on(btn,"click", async () => openProfile(btn.getAttribute("data-open")));
+  });
+
+  setText(els.profilesMsg, "");
+}
+
+function slugifyName(name){
+  const base = String(name||"perfil").trim().toLowerCase()
+    .replace(/[^a-z0-9]+/g,"-")
+    .replace(/(^-|-$)/g,"");
   return base || "perfil";
 }
 
-async function createProfile() {
-  const name = (els.newProfileName?.value || "").trim();
-  if (!name) {
-    setText(els.profilesMsg, "Escribe un nombre para el perfil.");
-    return;
-  }
+async function createProfile(){
+  const name = (els.newProfileName.value || "").trim();
+  if (!name) { setText(els.profilesMsg, "Escribe un nombre."); return; }
 
-  const payType = els.newPayType?.value || "15days";
-  const lastPay = els.newLastPayDate?.value || "";
-  const md = Number(els.newMonthDay?.value) || (lastPay ? new Date(lastPay).getDate() : 1);
+  const currency = els.newCurrency.value || "USD";
+  const payMode = els.newPayMode.value || "manual";
+  const payDay = clamp(Number(els.newPayDay.value || 15), 1, 31);
 
   const baseId = slugifyName(name);
-  let profileId = baseId;
+  let pid = baseId;
 
-  const existing = await listProfilesFromCloud(currentUser.uid);
-  const setIds = new Set(existing.map(x => x.id));
-  let n = 2;
-  while (setIds.has(profileId)) profileId = `${baseId}-${n++}`;
+  const existing = await listProfiles(currentUser.uid);
+  const ids = new Set(existing.map(x => x.id));
+  let n=2;
+  while(ids.has(pid)) pid = `${baseId}-${n++}`;
 
-  const fresh = defaultProfileState(profileId, name, payType, lastPay, md);
-  await profileDocRef(currentUser.uid, profileId).set(fresh, { merge: true });
+  await profileRef(currentUser.uid, pid).set({
+    displayName: name,
+    currency,
+    payMode,
+    payDay,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  }, { merge:true });
 
-  if (els.newProfileName) els.newProfileName.value = "";
-  if (els.newLastPayDate) els.newLastPayDate.value = "";
-  if (els.newMonthDay) els.newMonthDay.value = "";
-
+  els.newProfileName.value = "";
+  els.newPayDay.value = "";
   setText(els.profilesMsg, "Perfil creado ✅");
-  await refreshProfilesList();
+  await refreshProfilesUI();
 }
 
-async function openProfile(profileId) {
+/***********************
+ * Year select
+ ***********************/
+function buildYearSelect(){
+  const y = nowYear();
+  const years = [y-2, y-1, y, y+1].sort((a,b)=>b-a); // show recent
+  els.yearSelect.innerHTML = years.map(v => `<option value="${v}">${v}</option>`).join("");
+  els.yearSelect.value = String(y);
+}
+
+/***********************
+ * Realtime listeners
+ ***********************/
+function stopListeners(){
+  if (unsubIncome) unsubIncome();
+  if (unsubExpense) unsubExpense();
+  if (unsubFixed) unsubFixed();
+  unsubIncome = unsubExpense = unsubFixed = null;
+}
+
+function startYearListeners(year){
+  stopListeners();
+  incomes = [];
+  expenses = [];
+  fixedTemplates = [];
+
+  const { start, end } = yearRangeTs(year);
+
+  // incomes for year
+  unsubIncome = incomesCol(currentUser.uid, currentProfileId)
+    .orderBy("dateTs")
+    .startAt(start)
+    .endBefore(end)
+    .onSnapshot((snap) => {
+      incomes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderAll();
+    });
+
+  // expenses for year
+  unsubExpense = expensesCol(currentUser.uid, currentProfileId)
+    .orderBy("dateTs")
+    .startAt(start)
+    .endBefore(end)
+    .onSnapshot((snap) => {
+      expenses = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderAll();
+    });
+
+  // fixed templates (no year filter)
+  unsubFixed = fixedCol(currentUser.uid, currentProfileId)
+    .orderBy("name")
+    .onSnapshot((snap) => {
+      fixedTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderFixedList();
+    });
+}
+
+/***********************
+ * Charts
+ ***********************/
+function ensureCharts(){
+  if (!els.lineChart || !els.donutChart) return;
+
+  const months = Array.from({length:12}, (_,i)=>monthName(i));
+
+  if (!lineChart) {
+    lineChart = new Chart(els.lineChart, {
+      type: "line",
+      data: {
+        labels: months,
+        datasets: [
+          { label: "Ingresos", data: new Array(12).fill(0), tension: 0.25 },
+          { label: "Gastos", data: new Array(12).fill(0), tension: 0.25 },
+          { label: "Libre", data: new Array(12).fill(0), tension: 0.25 },
+        ]
+      },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true } },
+        scales: { y: { ticks: { callback: (v)=>v } } }
+      }
+    });
+  }
+
+  if (!donutChart) {
+    donutChart = new Chart(els.donutChart, {
+      type: "doughnut",
+      data: { labels: [], datasets: [{ label:"Gastos", data: [] }] },
+      options: {
+        responsive: true,
+        plugins: { legend: { display: true } }
+      }
+    });
+  }
+}
+
+function updateCharts(){
+  ensureCharts();
+  if (!lineChart || !donutChart) return;
+
+  const byMonthIncome = new Array(12).fill(0);
+  const byMonthExpense = new Array(12).fill(0);
+
+  for (const it of incomes) {
+    const d = it.dateTs?.toDate ? it.dateTs.toDate() : toDateAtLocalMidnight(it.dateStr);
+    byMonthIncome[monthIndexFromDate(d)] += Number(it.amount || 0);
+  }
+  for (const it of expenses) {
+    const d = it.dateTs?.toDate ? it.dateTs.toDate() : toDateAtLocalMidnight(it.dateStr);
+    byMonthExpense[monthIndexFromDate(d)] += Number(it.amount || 0);
+  }
+  const byMonthNet = byMonthIncome.map((v,i)=>v - byMonthExpense[i]);
+
+  lineChart.data.datasets[0].data = byMonthIncome;
+  lineChart.data.datasets[1].data = byMonthExpense;
+  lineChart.data.datasets[2].data = byMonthNet;
+  lineChart.update();
+
+  const catMap = new Map();
+  for (const it of expenses) {
+    const cat = String(it.category || "Sin categoría").trim() || "Sin categoría";
+    catMap.set(cat, (catMap.get(cat)||0) + Number(it.amount||0));
+  }
+  const labels = Array.from(catMap.keys());
+  const data = labels.map(k => catMap.get(k));
+
+  donutChart.data.labels = labels;
+  donutChart.data.datasets[0].data = data;
+  donutChart.update();
+}
+
+/***********************
+ * Render lists + dashboard
+ ***********************/
+function renderDashboard(){
+  const sumInc = incomes.reduce((a,b)=>a + Number(b.amount||0), 0);
+  const sumExp = expenses.reduce((a,b)=>a + Number(b.amount||0), 0);
+  const net = sumInc - sumExp;
+
+  setText(els.sumIncome, fmtMoneyByCurrency(sumInc));
+  setText(els.sumExpense, fmtMoneyByCurrency(sumExp));
+  setText(els.sumNet, fmtMoneyByCurrency(net));
+
+  if (els.sumNet) els.sumNet.className = "strong " + (net >= 0 ? "ok" : "bad");
+}
+
+function renderIncomeList(){
+  if (!els.incomeRows) return;
+  els.incomeRows.innerHTML = "";
+
+  const sorted = [...incomes].sort((a,b)=>{
+    const ad = a.dateTs?.toMillis?.() ?? 0;
+    const bd = b.dateTs?.toMillis?.() ?? 0;
+    return bd - ad;
+  });
+
+  for (const it of sorted) {
+    const d = it.dateTs?.toDate ? it.dateTs.toDate() : toDateAtLocalMidnight(it.dateStr);
+    const row = document.createElement("div");
+    row.className = "trow listRowIncome";
+    row.dataset.id = it.id;
+
+    row.innerHTML = `
+      <div>${isoDateFromDate(d)}</div>
+      <div class="muted">${escapeHtml(it.note || "")}</div>
+      <div class="right strong">${fmtMoneyByCurrency(Number(it.amount||0))}</div>
+      <button class="btn danger ghost del" type="button">✕</button>
+    `;
+
+    const del = row.querySelector(".del");
+    on(del,"click", async () => {
+      await incomesCol(currentUser.uid, currentProfileId).doc(it.id).delete();
+    });
+
+    els.incomeRows.appendChild(row);
+  }
+}
+
+function renderExpenseList(){
+  if (!els.expenseRows) return;
+  els.expenseRows.innerHTML = "";
+
+  const sorted = [...expenses].sort((a,b)=>{
+    const ad = a.dateTs?.toMillis?.() ?? 0;
+    const bd = b.dateTs?.toMillis?.() ?? 0;
+    return bd - ad;
+  });
+
+  for (const it of sorted) {
+    const d = it.dateTs?.toDate ? it.dateTs.toDate() : toDateAtLocalMidnight(it.dateStr);
+    const row = document.createElement("div");
+    row.className = "trow listRowExpense";
+    row.dataset.id = it.id;
+
+    row.innerHTML = `
+      <div>${isoDateFromDate(d)}</div>
+      <div>${escapeHtml(it.name || "")}</div>
+      <div class="muted">${escapeHtml(it.category || "Sin categoría")}</div>
+      <div class="right strong">${fmtMoneyByCurrency(Number(it.amount||0))}</div>
+      <button class="btn danger ghost del" type="button">✕</button>
+    `;
+
+    const del = row.querySelector(".del");
+    on(del,"click", async () => {
+      await expensesCol(currentUser.uid, currentProfileId).doc(it.id).delete();
+    });
+
+    els.expenseRows.appendChild(row);
+  }
+}
+
+function renderFixedList(){
+  if (!els.fixedRows) return;
+  els.fixedRows.innerHTML = "";
+
+  const sorted = [...fixedTemplates].sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
+
+  for (const it of sorted) {
+    const row = document.createElement("div");
+    row.className = "trow listRowFixed";
+    row.dataset.id = it.id;
+
+    row.innerHTML = `
+      <div>${escapeHtml(it.name || "")}</div>
+      <div class="muted">${escapeHtml(it.category || "Sin categoría")}</div>
+      <div>${Number(it.day || 1)}</div>
+      <div class="right strong">${fmtMoneyByCurrency(Number(it.amount||0))}</div>
+      <button class="btn danger ghost del" type="button">✕</button>
+    `;
+
+    const del = row.querySelector(".del");
+    on(del,"click", async () => {
+      await fixedCol(currentUser.uid, currentProfileId).doc(it.id).delete();
+    });
+
+    els.fixedRows.appendChild(row);
+  }
+}
+
+function renderMonthlyPanel(){
+  const isMonthly = meta?.payMode === "monthly";
+  toggleHidden(els.monthlyPanel, !isMonthly);
+  toggleHidden(els.payDayWrap, !isMonthly);
+
+  if (!isMonthly) return;
+
+  // build grid inputs 12 months
+  const year = Number(els.yearSelect.value || nowYear());
+  const payDay = clamp(Number(meta?.payDay || 15), 1, 31);
+
+  els.monthlyGrid.innerHTML = "";
+  for (let m=1; m<=12; m++){
+    const id = `m-${year}-${String(m).padStart(2,"0")}`;
+    const existing = incomes.find(x => x.id === id); // deterministic id
+    const val = existing?.amount ? String(existing.amount) : "";
+
+    const cell = document.createElement("div");
+    cell.className = "monthCell";
+    cell.innerHTML = `
+      <div class="mTitle">${monthName(m-1)} ${year} (día ${payDay})</div>
+      <input data-mid="${id}" inputmode="decimal" placeholder="Monto" value="${escapeHtml(val)}"/>
+    `;
+    els.monthlyGrid.appendChild(cell);
+  }
+}
+
+function renderAll(){
+  if (!meta) return;
+  renderDashboard();
+  renderIncomeList();
+  renderExpenseList();
+  renderMonthlyPanel();
+  updateCharts();
+}
+
+/***********************
+ * Profile open/load
+ ***********************/
+async function openProfile(profileId){
   currentProfileId = profileId;
   localStorage.setItem("lastProfileId", profileId);
 
-  setText(els.cloudMsg, "Cargando de la nube…");
-  state = await loadProfile(currentUser.uid, profileId);
+  setCloudMsg("Cargando…");
 
-  rebuildExpensesTable();
-  refreshAll();
+  const snap = await profileRef(currentUser.uid, profileId).get();
+  meta = snap.data() || {};
+
+  // defaults if missing
+  meta.displayName = meta.displayName || profileId;
+  meta.currency = meta.currency || "USD";
+  meta.payMode = meta.payMode || "manual";
+  meta.payDay = clamp(Number(meta.payDay || 15), 1, 31);
+
+  // UI populate
+  setText(els.whoTitle, `Perfil: ${meta.displayName}`);
+  els.profileName.value = meta.displayName;
+  els.currency.value = meta.currency;
+  els.payMode.value = meta.payMode;
+  els.payDay.value = String(meta.payDay);
+
+  buildYearSelect();
+
   show("app");
+  setCloudMsg("Listo ✅");
+
+  startYearListeners(Number(els.yearSelect.value || nowYear()));
+  renderFixedList();
+  renderMonthlyPanel();
+}
+
+/***********************
+ * Write meta updates
+ ***********************/
+let saveMetaTimer = null;
+function saveMetaDebounced(){
+  clearTimeout(saveMetaTimer);
+  saveMetaTimer = setTimeout(async ()=>{
+    if (!currentUser || !currentProfileId || !meta) return;
+    meta.updatedAt = new Date().toISOString();
+    await profileRef(currentUser.uid, currentProfileId).set(meta, { merge:true });
+    setCloudMsg(`Guardado: ${new Date().toLocaleTimeString()}`);
+  }, 250);
+}
+
+/***********************
+ * Actions: add income/expense/fixed
+ ***********************/
+async function addIncome(){
+  const dateStr = els.incomeDate.value;
+  const amount = parseNumber(els.incomeAmount.value);
+  const note = (els.incomeNote.value || "").trim();
+
+  if (!dateStr) { alert("Pon la fecha del ingreso."); return; }
+  if (amount <= 0) { alert("Pon un monto válido."); return; }
+
+  const dt = toDateAtLocalMidnight(dateStr);
+  await incomesCol(currentUser.uid, currentProfileId).add({
+    dateStr,
+    dateTs: TS.fromDate(dt),
+    amount,
+    note,
+    createdAt: new Date().toISOString(),
+  });
+
+  els.incomeAmount.value = "";
+  els.incomeNote.value = "";
+}
+
+async function addExpense(){
+  const dateStr = els.expDate.value;
+  const name = (els.expName.value || "").trim();
+  const category = (els.expCategory.value || "").trim() || "Sin categoría";
+  const amount = parseNumber(els.expAmount.value);
+
+  if (!dateStr) { alert("Pon la fecha del gasto."); return; }
+  if (!name) { alert("Pon el nombre del gasto."); return; }
+  if (amount <= 0) { alert("Pon un monto válido."); return; }
+
+  const dt = toDateAtLocalMidnight(dateStr);
+  await expensesCol(currentUser.uid, currentProfileId).add({
+    dateStr,
+    dateTs: TS.fromDate(dt),
+    name,
+    category,
+    amount,
+    createdAt: new Date().toISOString(),
+  });
+
+  els.expName.value = "";
+  els.expAmount.value = "";
+}
+
+async function addFixedTemplate(){
+  const name = (els.fixedName.value || "").trim();
+  const category = (els.fixedCategory.value || "").trim() || "Sin categoría";
+  const amount = parseNumber(els.fixedAmount.value);
+  const day = clamp(Number(els.fixedDay.value || 1), 1, 31);
+
+  if (!name) { alert("Pon el nombre del fijo."); return; }
+  if (amount <= 0) { alert("Pon un monto válido."); return; }
+
+  await fixedCol(currentUser.uid, currentProfileId).add({
+    name, category, amount, day,
+    createdAt: new Date().toISOString(),
+  });
+
+  els.fixedName.value = "";
+  els.fixedAmount.value = "";
+}
+
+async function applyFixedToYear(){
+  const year = Number(els.yearSelect.value || nowYear());
+  if (!confirm(`Esto creará/actualizará gastos fijos para ${year}. ¿Continuar?`)) return;
+
+  for (const t of fixedTemplates) {
+    const day = clamp(Number(t.day || 1), 1, 31);
+    for (let m=1; m<=12; m++) {
+      const id = `fx-${t.id}-${year}-${String(m).padStart(2,"0")}`;
+      const dt = new Date(year, m-1, clamp(day,1,31), 0,0,0,0);
+      const dateStr = isoDateFromDate(dt);
+
+      // determinístico (si ya existe lo actualiza)
+      await expensesCol(currentUser.uid, currentProfileId).doc(id).set({
+        dateStr,
+        dateTs: TS.fromDate(dt),
+        name: t.name,
+        category: t.category || "Sin categoría",
+        amount: Number(t.amount || 0),
+        source: "fixedTemplate",
+        templateId: t.id,
+        createdAt: new Date().toISOString(),
+      }, { merge:true });
+    }
+  }
+  alert("Listo ✅ Fijos aplicados al año.");
+}
+
+async function saveMonthlySalaries(){
+  const year = Number(els.yearSelect.value || nowYear());
+  const payDay = clamp(Number(meta.payDay || 15), 1, 31);
+
+  const inputs = els.monthlyGrid.querySelectorAll("input[data-mid]");
+  let saved = 0, removed = 0;
+
+  for (const inp of inputs) {
+    const id = inp.getAttribute("data-mid"); // m-YYYY-MM
+    const amount = parseNumber(inp.value);
+
+    const parts = id.split("-");
+    const y = Number(parts[1]);
+    const m = Number(parts[2]);
+
+    const dt = new Date(y, m-1, clamp(payDay,1,31), 0,0,0,0);
+    const dateStr = isoDateFromDate(dt);
+
+    const ref = incomesCol(currentUser.uid, currentProfileId).doc(id);
+
+    if (amount > 0) {
+      await ref.set({
+        dateStr,
+        dateTs: TS.fromDate(dt),
+        amount,
+        note: "Salario mensual",
+        source: "monthlyPlan",
+        createdAt: new Date().toISOString(),
+      }, { merge:true });
+      saved++;
+    } else {
+      // si está vacío, intenta borrar si existía
+      try { await ref.delete(); removed++; } catch {}
+    }
+  }
+
+  setText(els.monthlyMsg, `Guardado ✅ (${saved} meses).`);
+}
+
+/***********************
+ * Export/Import
+ ***********************/
+async function exportAll(){
+  const year = Number(els.yearSelect.value || nowYear());
+  const payload = {
+    exportedAt: new Date().toISOString(),
+    profileId: currentProfileId,
+    meta,
+    year,
+    incomes,
+    expenses,
+    fixedTemplates
+  };
+  const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `misfinanzas-${currentProfileId}-${year}.json`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
+}
+
+async function importAll(file){
+  const txt = await file.text();
+  const data = JSON.parse(txt);
+
+  if (!data?.meta || !data?.year) { alert("Archivo inválido."); return; }
+
+  // meta
+  meta = { ...meta, ...data.meta };
+  await profileRef(currentUser.uid, currentProfileId).set(meta, { merge:true });
+
+  // fixed templates: import as new docs (simple)
+  if (Array.isArray(data.fixedTemplates)) {
+    for (const t of data.fixedTemplates) {
+      await fixedCol(currentUser.uid, currentProfileId).add({
+        name: t.name || "Fijo",
+        category: t.category || "Sin categoría",
+        amount: Number(t.amount || 0),
+        day: clamp(Number(t.day || 1), 1, 31),
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  // incomes & expenses import to selected year only:
+  // (para no mezclar años accidentalmente)
+  const year = Number(els.yearSelect.value || nowYear());
+  const { start, end } = yearRangeTs(year);
+  const startMs = start.toMillis();
+  const endMs = end.toMillis();
+
+  if (Array.isArray(data.incomes)) {
+    for (const it of data.incomes) {
+      const d = it.dateTs?.seconds ? new Date(it.dateTs.seconds*1000) : toDateAtLocalMidnight(it.dateStr);
+      const ms = d.getTime();
+      if (ms < startMs || ms >= endMs) continue;
+      await incomesCol(currentUser.uid, currentProfileId).add({
+        dateStr: isoDateFromDate(d),
+        dateTs: TS.fromDate(d),
+        amount: Number(it.amount || 0),
+        note: it.note || "",
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  if (Array.isArray(data.expenses)) {
+    for (const it of data.expenses) {
+      const d = it.dateTs?.seconds ? new Date(it.dateTs.seconds*1000) : toDateAtLocalMidnight(it.dateStr);
+      const ms = d.getTime();
+      if (ms < startMs || ms >= endMs) continue;
+      await expensesCol(currentUser.uid, currentProfileId).add({
+        dateStr: isoDateFromDate(d),
+        dateTs: TS.fromDate(d),
+        name: it.name || "Gasto",
+        category: it.category || "Sin categoría",
+        amount: Number(it.amount || 0),
+        createdAt: new Date().toISOString(),
+      });
+    }
+  }
+
+  alert("Importado ✅");
+}
+
+/***********************
+ * Reset year
+ ***********************/
+async function resetYear(){
+  const year = Number(els.yearSelect.value || nowYear());
+  if (!confirm(`Esto borrará TODOS los ingresos y gastos del año ${year} en este perfil. ¿Continuar?`)) return;
+
+  const { start, end } = yearRangeTs(year);
+
+  // delete incomes year
+  const incSnap = await incomesCol(currentUser.uid, currentProfileId)
+    .orderBy("dateTs").startAt(start).endBefore(end).get();
+  for (const d of incSnap.docs) await d.ref.delete();
+
+  // delete expenses year
+  const expSnap = await expensesCol(currentUser.uid, currentProfileId)
+    .orderBy("dateTs").startAt(start).endBefore(end).get();
+  for (const d of expSnap.docs) await d.ref.delete();
+
+  alert("Año reseteado ✅");
 }
 
 /***********************
  * Events
  ***********************/
-on(els.btnTogglePass, "click", () => {
-  const hidden = els.authPass?.type === "password";
-  if (els.authPass) els.authPass.type = hidden ? "text" : "password";
-  if (els.btnTogglePass) els.btnTogglePass.textContent = hidden ? "Hide pass" : "Show pass";
+on(els.btnTogglePass,"click", ()=>{
+  const hidden = els.authPass.type === "password";
+  els.authPass.type = hidden ? "text" : "password";
+  els.btnTogglePass.textContent = hidden ? "Hide pass" : "Show pass";
 });
 
-on(els.btnSignup, "click", async () => {
-  try {
-    setText(els.authMsg, "Creando cuenta…");
-    await auth.createUserWithEmailAndPassword((els.authEmail?.value || "").trim(), els.authPass?.value || "");
-  } catch (e) {
+on(els.btnSignup,"click", async ()=>{
+  try{
+    setText(els.authMsg,"Creando cuenta…");
+    await auth.createUserWithEmailAndPassword((els.authEmail.value||"").trim(), els.authPass.value||"");
+  }catch(e){
     setText(els.authMsg, e?.message || "Error creando cuenta");
   }
 });
 
-on(els.btnLogin, "click", async () => {
-  try {
-    setText(els.authMsg, "Entrando…");
-    await auth.signInWithEmailAndPassword((els.authEmail?.value || "").trim(), els.authPass?.value || "");
-    if (els.authPass) els.authPass.type = "password";
-    if (els.btnTogglePass) els.btnTogglePass.textContent = "Show pass";
-  } catch (e) {
+on(els.btnLogin,"click", async ()=>{
+  try{
+    setText(els.authMsg,"Entrando…");
+    await auth.signInWithEmailAndPassword((els.authEmail.value||"").trim(), els.authPass.value||"");
+    els.authPass.type = "password";
+    els.btnTogglePass.textContent = "Show pass";
+  }catch(e){
     setText(els.authMsg, e?.message || "Error entrando");
   }
 });
 
-on(els.btnLogout, "click", async () => {
-  await auth.signOut();
+on(els.btnLogout,"click", async ()=> auth.signOut());
+
+on(els.btnRefreshProfiles,"click", ()=> refreshProfilesUI());
+
+on(els.newPayMode,"change", ()=>{
+  toggleHidden(els.newPayDayWrap, els.newPayMode.value !== "monthly");
 });
 
-on(els.btnBackProfiles, "click", () => show("profiles"));
-on(els.btnRefreshProfiles, "click", () => refreshProfilesList());
+on(els.btnCreateProfile,"click", ()=> createProfile());
 
-on(els.newPayType, "change", () => setMonthlyVisibility(els.newPayType, els.newMonthDayWrap));
-on(els.btnCreateProfile, "click", async () => {
-  try {
-    setText(els.profilesMsg, "Creando…");
-    await createProfile();
-  } catch {
-    setText(els.profilesMsg, "No pude crear el perfil.");
-  }
+on(els.btnBackProfiles,"click", ()=>{
+  stopListeners();
+  show("profiles");
 });
 
-on(els.btnCalc, "click", () => refreshAll());
-
-on(els.payType, "change", () => {
-  if (!state) return;
-  state.paySchedule.type = els.payType.value;
-  setMonthlyVisibility(els.payType, els.monthDayWrap);
-
-  if (state.paySchedule.type === "monthly") {
-    const md = Number(state.paySchedule.monthDay) || (state.lastPayDate ? new Date(state.lastPayDate).getDate() : 1);
-    state.paySchedule.monthDay = md;
-    if (els.monthDay) els.monthDay.value = String(md);
-  }
-
-  saveToCloudDebounced();
-  refreshAll();
+on(els.yearSelect,"change", ()=>{
+  startYearListeners(Number(els.yearSelect.value || nowYear()));
 });
 
-on(els.lastPayDate, "change", () => {
-  if (!state) return;
-  state.lastPayDate = els.lastPayDate.value;
-
-  if (state.paySchedule.type === "monthly" && state.lastPayDate) {
-    state.paySchedule.monthDay = new Date(state.lastPayDate).getDate();
-    if (els.monthDay) els.monthDay.value = String(state.paySchedule.monthDay);
-  }
-
-  saveToCloudDebounced();
-  refreshAll();
+on(els.profileName,"input", ()=>{
+  meta.displayName = (els.profileName.value || "").trim() || meta.displayName;
+  setText(els.whoTitle, `Perfil: ${meta.displayName}`);
+  saveMetaDebounced();
 });
 
-on(els.monthDay, "input", () => {
-  if (!state) return;
-  const v = Math.max(1, Math.min(31, Number(els.monthDay.value) || 1));
-  state.paySchedule.monthDay = v;
-  saveToCloudDebounced();
-  refreshAll();
+on(els.currency,"change", ()=>{
+  meta.currency = els.currency.value || "USD";
+  saveMetaDebounced();
+  renderAll(); // refresh money formatting
 });
 
-on(els.btnAddExpense, "click", () => {
-  if (!state) return;
-  const ex = { id: uid(), name: "Nuevo gasto", amount: "", freqId: "monthly", dueDate: "" };
-  state.expenses.push(ex);
-  saveToCloudDebounced();
-  if (els.rows) els.rows.appendChild(createExpenseRow(ex));
-  refreshAll();
+on(els.payMode,"change", ()=>{
+  meta.payMode = els.payMode.value || "manual";
+  toggleHidden(els.payDayWrap, meta.payMode !== "monthly");
+  saveMetaDebounced();
+  renderMonthlyPanel();
 });
 
-on(els.btnResetProfile, "click", async () => {
-  if (!currentUser || !currentProfileId || !state) return;
-  if (!confirm("¿Seguro que quieres resetear este perfil en la nube?")) return;
-
-  const fresh = defaultProfileState(
-    currentProfileId,
-    state.displayName,
-    state.paySchedule?.type || "15days",
-    state.lastPayDate || "",
-    Number(state.paySchedule?.monthDay) || 1
-  );
-  await profileDocRef(currentUser.uid, currentProfileId).set(fresh, { merge: false });
-  state = fresh;
-
-  rebuildExpensesTable();
-  refreshAll();
-  setText(els.cloudMsg, "Perfil reseteado.");
+on(els.payDay,"input", ()=>{
+  meta.payDay = clamp(Number(els.payDay.value || 15), 1, 31);
+  saveMetaDebounced();
+  renderMonthlyPanel();
 });
+
+on(els.btnSaveMonthly,"click", ()=> saveMonthlySalaries());
+
+on(els.btnAddIncome,"click", ()=> addIncome());
+on(els.btnAddExpense,"click", ()=> addExpense());
+on(els.btnAddFixed,"click", ()=> addFixedTemplate());
+on(els.btnApplyFixedYear,"click", ()=> applyFixedToYear());
+
+on(els.btnExport,"click", ()=> exportAll());
+
+on(els.importFile,"change", async (e)=>{
+  const f = e.target.files?.[0];
+  if (!f) return;
+  try { await importAll(f); } catch { alert("No pude importar."); }
+  e.target.value = "";
+});
+
+on(els.btnResetYear,"click", ()=> resetYear());
 
 /***********************
- * Start
+ * Auth state
  ***********************/
-auth.onAuthStateChanged(async (user) => {
+auth.onAuthStateChanged(async (user)=>{
   currentUser = user;
 
   if (!user) {
     currentProfileId = null;
-    state = null;
-    setText(els.authMsg, "");
+    meta = null;
+    stopListeners();
+    setText(els.authMsg,"");
     show("auth");
     return;
   }
 
   show("profiles");
-  await refreshProfilesList();
+  await refreshProfilesUI();
 
   const last = localStorage.getItem("lastProfileId");
   if (last) {
-    const profiles = await listProfilesFromCloud(user.uid);
+    const profiles = await listProfiles(user.uid);
     if (profiles.some(p => p.id === last)) await openProfile(last);
   }
 });
