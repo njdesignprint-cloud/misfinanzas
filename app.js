@@ -6,6 +6,9 @@ const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
 const setText = (el, txt) => el && (el.textContent = txt);
 const toggleHidden = (el, hidden) => el && el.classList.toggle("hidden", hidden);
 
+function uid() {
+  return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
+}
 function parseNumber(v) {
   const cleaned = String(v ?? "").replace(/,/g, "").trim();
   const n = Number(cleaned);
@@ -434,12 +437,12 @@ function startYearListeners(year){
     .onSnapshot((snap) => {
       fixedTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       renderFixedList();
-      renderSavePlan(); // usa plantillas
+      renderSavePlan();
     });
 }
 
 /***********************
- * Charts (FIX donut colors)
+ * Charts (donut colors)
  ***********************/
 function ensureCharts(){
   if (!els.lineChart || !els.donutChart) return;
@@ -482,7 +485,6 @@ function ensureCharts(){
     });
   }
 }
-
 function updateCharts(){
   ensureCharts();
   if (!lineChart || !donutChart) return;
@@ -505,7 +507,6 @@ function updateCharts(){
   lineChart.data.datasets[2].data = byMonthNet;
   lineChart.update();
 
-  // gastos por categoría
   const catMap = new Map();
   for (const it of expenses) {
     const cat = String(it.category || "Sin categoría").trim() || "Sin categoría";
@@ -637,11 +638,45 @@ function renderMonthlyPanel(){
 }
 
 /***********************
- * ✅ MÓDULO SEMANAL/QUINCENAL (ARREGLADO)
- * Objetivo: cuánto separar POR COBRO para cubrir FIJOS del mes
- * - Planea el mes del PRÓXIMO COBRO (no el mes “de hoy” si ya viene otro mes)
- * - Si un fijo ya fue aplicado/pagado como expense "source=fixedTemplate", no lo cuenta 2 veces
+ * ✅ MÓDULO SEMANAL/QUINCENAL (AUTO + SOLO MES ACTUAL)
+ * - Calcula SOLO gastos fijos del MES ACTUAL
+ * - Reparte cuánto apartar en cada cobro restante del mes
+ * - Usa los “pagos introducidos” (ingresos) para detectar último cobro real
  ***********************/
+function getLatestIncomeDateUpToToday(){
+  const today = startOfDay(new Date());
+  let best = null;
+
+  for (const it of incomes) {
+    const d = it.dateTs?.toDate ? startOfDay(it.dateTs.toDate()) : startOfDay(toDateAtLocalMidnight(it.dateStr));
+    if (d <= today) {
+      if (!best || d > best) best = d;
+    }
+  }
+  return best;
+}
+
+function getEffectiveLastPayDate(){
+  const today = startOfDay(new Date());
+
+  let metaDate = null;
+  if (meta?.lastPayDate) {
+    const d = startOfDay(new Date(meta.lastPayDate));
+    if (!Number.isNaN(d.getTime())) metaDate = d;
+  }
+
+  const incomeDate = getLatestIncomeDateUpToToday();
+
+  const candidates = [metaDate, incomeDate].filter(Boolean);
+  if (!candidates.length) return null;
+
+  let best = candidates[0];
+  for (const c of candidates) if (c > best) best = c;
+
+  if (best > today) return best;
+  return best;
+}
+
 function getNextPayDate(){
   const freq = meta?.payFrequency || "biweekly";
   const today = startOfDay(new Date());
@@ -654,112 +689,112 @@ function getNextPayDate(){
     return next;
   }
 
-  // weekly/biweekly
-  if (!meta?.lastPayDate) return null;
-  let d = startOfDay(new Date(meta.lastPayDate));
-  if (Number.isNaN(d.getTime())) return null;
+  const last = getEffectiveLastPayDate();
+  if (!last) return null;
 
   const step = (freq === "weekly") ? 7 : 14;
 
-  // si lo que pusiste fue "último cobro" => próximo = último + step
-  if (d <= today) d = startOfDay(addDays(d, step));
-  while (d < today) d = startOfDay(addDays(d, step));
+  if (last > today) return last;
 
-  return d;
+  let next = startOfDay(addDays(last, step));
+  while (next < today) next = startOfDay(addDays(next, step));
+  return next;
 }
 
-function monthBounds(date){
-  const y = date.getFullYear();
-  const m = date.getMonth();
-  const start = startOfDay(new Date(y, m, 1, 0,0,0,0));
-  const end = startOfDay(new Date(y, m+1, 0, 0,0,0,0));
-  return { start, end };
-}
-
-function getPayDatesInMonth(nextPay, monthEnd){
-  const freq = meta?.payFrequency || "biweekly";
-  const dates = [];
-
-  if (!nextPay) return dates;
-
-  if (freq === "monthly") {
-    dates.push(startOfDay(nextPay));
-    return dates;
-  }
-
-  const step = (freq === "weekly") ? 7 : 14;
-  let d = startOfDay(nextPay);
-  while (d <= monthEnd) {
-    dates.push(d);
-    d = startOfDay(addDays(d, step));
-  }
-  return dates;
+function monthBoundsForToday(){
+  const now = new Date();
+  const start = startOfDay(new Date(now.getFullYear(), now.getMonth(), 1, 0,0,0,0));
+  const end = startOfDay(new Date(now.getFullYear(), now.getMonth()+1, 0, 0,0,0,0));
+  const label = `${monthName(start.getMonth())} ${start.getFullYear()}`;
+  return { start, end, label };
 }
 
 function fixedAlreadyPaidThisMonth(templateId, monthStart, monthEnd){
-  // si el usuario aplicó fijos al año, aparecen como expense source=fixedTemplate + templateId
   return expenses.some(e => {
     if (e.source !== "fixedTemplate") return false;
     if (e.templateId !== templateId) return false;
+
     const dt = e.dateTs?.toDate ? startOfDay(e.dateTs.toDate()) : startOfDay(toDateAtLocalMidnight(e.dateStr));
     return dt >= monthStart && dt <= monthEnd;
   });
 }
 
+function getPayDatesUntilMonthEnd(nextPay, monthEnd){
+  const freq = meta?.payFrequency || "biweekly";
+  if (!nextPay) return [];
+
+  if (freq === "monthly") {
+    return nextPay <= monthEnd ? [startOfDay(nextPay)] : [];
+  }
+
+  const step = (freq === "weekly") ? 7 : 14;
+  const out = [];
+  let d = startOfDay(nextPay);
+  while (d <= monthEnd) {
+    out.push(d);
+    d = startOfDay(addDays(d, step));
+  }
+  return out;
+}
+
 function renderSavePlan(){
   if (!meta) return;
 
+  const today = startOfDay(new Date());
   const nextPay = getNextPayDate();
 
-  // ✅ FIX: nextPayDate es INPUT, no texto
   if (els.nextPayDate) els.nextPayDate.value = nextPay ? fmtShortDate(nextPay) : "";
+
+  const { start: mStart, end: mEnd, label: monthLabel } = monthBoundsForToday();
+
+  const payDates = nextPay ? getPayDatesUntilMonthEnd(nextPay, mEnd) : [];
+  setText(els.saveCount, String(payDates.length));
 
   if (!nextPay) {
     setText(els.urgentSave, fmtMoney(0));
     setText(els.nextSave, fmtMoney(0));
-    setText(els.saveCount, "0");
-    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Configura “Último cobro” (Semanal/Quincenal) o “Día de cobro” (Mensual).</span><span class="muted">—</span></div>`;
+    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Configura tu cobro (Frecuencia + Último cobro o ingresa salarios).</span><span class="muted">—</span></div>`;
     return;
   }
 
-  // Planificamos el MES del próximo cobro
-  const { start: mStart, end: mEnd } = monthBounds(nextPay);
-  const payDates = getPayDatesInMonth(nextPay, mEnd);
-  setText(els.saveCount, String(payDates.length));
-
-  // Construir lista de FIJOS de ese mes (no los que ya fueron pagados)
-  let urgent = 0;
   const planTotals = payDates.map(d => ({ date: d, total: 0 }));
 
-  const monthLabel = `${monthName(nextPay.getMonth())} ${nextPay.getFullYear()}`;
+  const firstPay = payDates.length ? payDates[0] : null;
+  let urgent = 0;
 
   for (const t of fixedTemplates) {
     const amount = Number(t.amount || 0);
     if (amount <= 0) continue;
 
-    const day = clamp(Number(t.day || 1), 1, 31);
+    if (fixedAlreadyPaidThisMonth(t.id, mStart, mEnd)) continue;
 
-    // fecha de vencimiento en este mes (ajustando al último día real)
+    const day = clamp(Number(t.day || 1), 1, 31);
     const lastDay = new Date(mStart.getFullYear(), mStart.getMonth()+1, 0).getDate();
     const due = startOfDay(new Date(mStart.getFullYear(), mStart.getMonth(), Math.min(day, lastDay), 0,0,0,0));
 
-    // si ya fue aplicado/pagado como fijo este mes => no lo contamos
-    if (fixedAlreadyPaidThisMonth(t.id, mStart, mEnd)) continue;
+    if (due < mStart || due > mEnd) continue;
 
-    // si vence antes del próximo cobro => urgente (pagar con dinero existente)
-    if (due < nextPay) {
+    if (due < today) {
       urgent += amount;
       continue;
     }
 
-    // cuántos cobros hay antes (o el mismo día) del vencimiento
+    if (!firstPay) {
+      urgent += amount;
+      continue;
+    }
+
+    if (due < firstPay) {
+      urgent += amount;
+      continue;
+    }
+
     const eligible = payDates.filter(p => p <= due);
     if (!eligible.length) {
       urgent += amount;
       continue;
     }
 
-    // repartir el monto entre esos cobros
     const share = amount / eligible.length;
     for (const p of eligible) {
       const idx = payDates.findIndex(x => x.getTime() === p.getTime());
@@ -767,23 +802,22 @@ function renderSavePlan(){
     }
   }
 
-  // resultados
-  const nextSave = planTotals[0]?.total || 0;
   setText(els.urgentSave, fmtMoney(urgent));
-  setText(els.nextSave, fmtMoney(nextSave));
+  setText(els.nextSave, fmtMoney(planTotals[0]?.total || 0));
 
-  // render UI
-  els.savePlan.innerHTML = `
-    <div class="planRow">
-      <span class="muted">Mes planificado</span>
+  els.savePlan.innerHTML =
+    `<div class="planRow">
+      <span class="muted">Mes planificado (solo fijos)</span>
       <span class="strong">${escapeHtml(monthLabel)}</span>
-    </div>
-  ` + planTotals.map(p => `
-    <div class="planRow">
-      <span>${escapeHtml(fmtShortDate(p.date))}</span>
-      <span class="strong">${escapeHtml(fmtMoney(p.total))}</span>
-    </div>
-  `).join("");
+    </div>` +
+    (payDates.length
+      ? planTotals.map(p => `
+          <div class="planRow">
+            <span>${escapeHtml(fmtShortDate(p.date))}</span>
+            <span class="strong">${escapeHtml(fmtMoney(p.total))}</span>
+          </div>
+        `).join("")
+      : `<div class="planRow"><span class="muted">No quedan cobros este mes.</span><span class="muted">—</span></div>`);
 }
 
 /***********************
