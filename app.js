@@ -1,5 +1,5 @@
 /***********************
- * Anti-crash helpers
+ * Helpers (anti-crash)
  ***********************/
 const $ = (id) => document.getElementById(id);
 const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
@@ -17,8 +17,16 @@ function parseNumber(v) {
 function hasValue(v){ return String(v ?? "").trim().length > 0; }
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
+function escapeHtml(s){
+  return String(s ?? "")
+    .replaceAll("&","&amp;")
+    .replaceAll("<","&lt;")
+    .replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;")
+    .replaceAll("'","&#039;");
+}
+
 function toDateAtLocalMidnight(dateStr){
-  // dateStr: YYYY-MM-DD
   const [y,m,d] = dateStr.split("-").map(Number);
   return new Date(y, (m||1)-1, d||1, 0,0,0,0);
 }
@@ -28,10 +36,48 @@ function isoDateFromDate(d){
   const dd = String(d.getDate()).padStart(2,"0");
   return `${yyyy}-${mm}-${dd}`;
 }
-function monthIndexFromDate(d){ return d.getMonth(); } // 0..11
+function startOfDay(d){
+  const x = new Date(d);
+  x.setHours(0,0,0,0);
+  return x;
+}
+function addDays(d, n){
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+function addMonths(d, n){
+  const x = new Date(d);
+  const day = x.getDate();
+  x.setMonth(x.getMonth() + n);
+  const last = new Date(x.getFullYear(), x.getMonth()+1, 0).getDate();
+  if (day > last) x.setDate(last);
+  return x;
+}
+function monthIndexFromDate(d){ return d.getMonth(); }
 function monthName(i){
   return ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][i] || "";
 }
+function fmtShortDate(d){
+  return new Intl.DateTimeFormat("es-US",{month:"short", day:"2-digit", year:"numeric"}).format(d);
+}
+
+/***********************
+ * Categories (base)
+ ***********************/
+const BASE_CATEGORIES = [
+  "Renta",
+  "Telefonos",
+  "Electricidad",
+  "Agua",
+  "Gas",
+  "Auto",
+  "Seguro Auto",
+  "Seguro Medico",
+  "Mercado",
+  "Colegio",
+  "Ayuda Familiar"
+];
 
 /***********************
  * Firebase
@@ -61,12 +107,10 @@ const TS = firebase.firestore.Timestamp;
  * Elements
  ***********************/
 const els = {
-  // Views
   authView: $("authView"),
   profileView: $("profileView"),
   appView: $("appView"),
 
-  // Auth
   authEmail: $("authEmail"),
   authPass: $("authPass"),
   btnTogglePass: $("btnTogglePass"),
@@ -75,18 +119,16 @@ const els = {
   authMsg: $("authMsg"),
   btnLogout: $("btnLogout"),
 
-  // Profiles
   profilesList: $("profilesList"),
   btnRefreshProfiles: $("btnRefreshProfiles"),
   newProfileName: $("newProfileName"),
   newCurrency: $("newCurrency"),
-  newPayMode: $("newPayMode"),
+  newPayFrequency: $("newPayFrequency"),
   newPayDayWrap: $("newPayDayWrap"),
   newPayDay: $("newPayDay"),
   btnCreateProfile: $("btnCreateProfile"),
   profilesMsg: $("profilesMsg"),
 
-  // App header
   whoTitle: $("whoTitle"),
   btnBackProfiles: $("btnBackProfiles"),
   btnExport: $("btnExport"),
@@ -94,35 +136,41 @@ const els = {
   btnResetYear: $("btnResetYear"),
   cloudMsg: $("cloudMsg"),
 
-  // Settings
   profileName: $("profileName"),
   currency: $("currency"),
   yearSelect: $("yearSelect"),
-  payMode: $("payMode"),
+
+  payFrequency: $("payFrequency"),
+  lastPayDate: $("lastPayDate"),
   payDayWrap: $("payDayWrap"),
   payDay: $("payDay"),
+  nextPayDate: $("nextPayDate"),
+  btnRecalcSave: $("btnRecalcSave"),
 
-  // Monthly panel
+  btnAddCategory: $("btnAddCategory"),
+
+  urgentSave: $("urgentSave"),
+  nextSave: $("nextSave"),
+  saveCount: $("saveCount"),
+  savePlan: $("savePlan"),
+
   monthlyPanel: $("monthlyPanel"),
   monthlyGrid: $("monthlyGrid"),
   btnSaveMonthly: $("btnSaveMonthly"),
   monthlyMsg: $("monthlyMsg"),
 
-  // Dashboard
   sumIncome: $("sumIncome"),
   sumExpense: $("sumExpense"),
   sumNet: $("sumNet"),
   lineChart: $("lineChart"),
   donutChart: $("donutChart"),
 
-  // Income
   incomeDate: $("incomeDate"),
   incomeAmount: $("incomeAmount"),
   incomeNote: $("incomeNote"),
   btnAddIncome: $("btnAddIncome"),
   incomeRows: $("incomeRows"),
 
-  // Fixed templates
   fixedName: $("fixedName"),
   fixedCategory: $("fixedCategory"),
   fixedAmount: $("fixedAmount"),
@@ -131,7 +179,6 @@ const els = {
   btnApplyFixedYear: $("btnApplyFixedYear"),
   fixedRows: $("fixedRows"),
 
-  // Expense
   expDate: $("expDate"),
   expName: $("expName"),
   expCategory: $("expCategory"),
@@ -147,9 +194,9 @@ let currentUser = null;
 let currentProfileId = null;
 
 let meta = null;            // profile doc
-let incomes = [];           // year incomes (from snapshot)
-let expenses = [];          // year expenses (from snapshot)
-let fixedTemplates = [];    // templates (from snapshot)
+let incomes = [];           // year incomes
+let expenses = [];          // year expenses
+let fixedTemplates = [];    // templates
 
 let unsubIncome = null;
 let unsubExpense = null;
@@ -166,6 +213,9 @@ function incomesCol(uid, pid){ return profileRef(uid,pid).collection("incomes");
 function expensesCol(uid, pid){ return profileRef(uid,pid).collection("expenses"); }
 function fixedCol(uid, pid){ return profileRef(uid,pid).collection("fixed"); }
 
+/***********************
+ * View
+ ***********************/
 function show(view){
   toggleHidden(els.authView, view !== "auth");
   toggleHidden(els.profileView, view !== "profiles");
@@ -173,7 +223,10 @@ function show(view){
   toggleHidden(els.btnLogout, view === "auth");
 }
 
-function fmtMoneyByCurrency(n){
+/***********************
+ * Money formatting per profile currency
+ ***********************/
+function fmtMoney(n){
   const c = meta?.currency || "USD";
   const v = Number.isFinite(n) ? n : 0;
   try {
@@ -183,18 +236,59 @@ function fmtMoneyByCurrency(n){
   }
 }
 
-function nowYear(){
-  return new Date().getFullYear();
+/***********************
+ * Year helpers
+ ***********************/
+function nowYear(){ return new Date().getFullYear(); }
+function buildYearSelect(){
+  const y = nowYear();
+  const years = [y-2, y-1, y, y+1].sort((a,b)=>b-a);
+  els.yearSelect.innerHTML = years.map(v => `<option value="${v}">${v}</option>`).join("");
+  els.yearSelect.value = String(y);
 }
-
 function yearRangeTs(year){
   const start = new Date(year,0,1,0,0,0,0);
   const end = new Date(year+1,0,1,0,0,0,0);
   return { start: TS.fromDate(start), end: TS.fromDate(end) };
 }
 
-function setCloudMsg(txt){
-  setText(els.cloudMsg, txt || "");
+/***********************
+ * Categories per profile (base + custom)
+ ***********************/
+function getAllCategories(){
+  const custom = Array.isArray(meta?.customCategories) ? meta.customCategories : [];
+  const set = new Set([...BASE_CATEGORIES, ...custom].map(x => String(x).trim()).filter(Boolean));
+  return Array.from(set);
+}
+
+function buildCategorySelect(selectEl, value){
+  if (!selectEl) return;
+  const cats = getAllCategories();
+  const addOpt = "__ADD__";
+
+  selectEl.innerHTML =
+    cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("") +
+    `<option value="${addOpt}">+ Agregar categoría…</option>`;
+
+  if (value && cats.includes(value)) selectEl.value = value;
+  else if (cats.length) selectEl.value = cats[0];
+}
+
+async function addCategoryFlow(){
+  const name = prompt("Nueva categoría (ej: Internet, Gym, etc.)");
+  const clean = String(name ?? "").trim();
+  if (!clean) return;
+
+  const current = Array.isArray(meta.customCategories) ? meta.customCategories : [];
+  const set = new Set(current.map(x=>String(x).trim()).filter(Boolean));
+  set.add(clean);
+
+  meta.customCategories = Array.from(set);
+  saveMetaDebounced();
+
+  // rebuild selects
+  buildCategorySelect(els.fixedCategory, els.fixedCategory.value);
+  buildCategorySelect(els.expCategory, els.expCategory.value);
 }
 
 /***********************
@@ -207,8 +301,10 @@ async function ensureDefaultProfiles(uid){
   await profileRef(uid,"noel").set({
     displayName: "Noel",
     currency: "USD",
-    payMode: "manual",     // manual incomes
-    payDay: 15,            // for monthly mode if ever used
+    payFrequency: "biweekly",
+    lastPayDate: "",
+    payDay: 15,
+    customCategories: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }, { merge:true });
@@ -216,8 +312,10 @@ async function ensureDefaultProfiles(uid){
   await profileRef(uid,"jenniffer").set({
     displayName: "Jenniffer",
     currency: "USD",
-    payMode: "manual",
+    payFrequency: "weekly",
+    lastPayDate: "",
     payDay: 15,
+    customCategories: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }, { merge:true });
@@ -227,32 +325,23 @@ async function listProfiles(uid){
   const snap = await db.collection("users").doc(uid).collection("profiles").get();
   return snap.docs.map(d => ({ id:d.id, ...d.data() }));
 }
-
 function profileCardHTML(p){
   const name = p.displayName || p.id;
   const cur = p.currency || "USD";
-  const mode = p.payMode === "monthly" ? "Mensual" : "Manual";
+  const pf = p.payFrequency || "biweekly";
+  const pfLabel = pf === "weekly" ? "Semanal" : (pf === "monthly" ? "Mensual" : "Quincenal");
   return `
     <div class="profileCard">
       <div class="row">
         <div>
           <div class="name">${escapeHtml(name)}</div>
-          <div class="meta">${escapeHtml(mode)} · ${escapeHtml(cur)}</div>
+          <div class="meta">${escapeHtml(pfLabel)} · ${escapeHtml(cur)}</div>
         </div>
         <button class="btn" data-open="${escapeHtml(p.id)}" type="button">Abrir</button>
       </div>
     </div>
   `;
 }
-function escapeHtml(s){
-  return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
-}
-
 async function refreshProfilesUI(){
   if (!currentUser) return;
   setText(els.profilesMsg, "Cargando perfiles…");
@@ -266,20 +355,18 @@ async function refreshProfilesUI(){
 
   setText(els.profilesMsg, "");
 }
-
 function slugifyName(name){
   const base = String(name||"perfil").trim().toLowerCase()
     .replace(/[^a-z0-9]+/g,"-")
     .replace(/(^-|-$)/g,"");
   return base || "perfil";
 }
-
 async function createProfile(){
   const name = (els.newProfileName.value || "").trim();
   if (!name) { setText(els.profilesMsg, "Escribe un nombre."); return; }
 
   const currency = els.newCurrency.value || "USD";
-  const payMode = els.newPayMode.value || "manual";
+  const payFrequency = els.newPayFrequency.value || "biweekly";
   const payDay = clamp(Number(els.newPayDay.value || 15), 1, 31);
 
   const baseId = slugifyName(name);
@@ -293,8 +380,10 @@ async function createProfile(){
   await profileRef(currentUser.uid, pid).set({
     displayName: name,
     currency,
-    payMode,
+    payFrequency,
+    lastPayDate: "",
     payDay,
+    customCategories: [],
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }, { merge:true });
@@ -303,16 +392,6 @@ async function createProfile(){
   els.newPayDay.value = "";
   setText(els.profilesMsg, "Perfil creado ✅");
   await refreshProfilesUI();
-}
-
-/***********************
- * Year select
- ***********************/
-function buildYearSelect(){
-  const y = nowYear();
-  const years = [y-2, y-1, y, y+1].sort((a,b)=>b-a); // show recent
-  els.yearSelect.innerHTML = years.map(v => `<option value="${v}">${v}</option>`).join("");
-  els.yearSelect.value = String(y);
 }
 
 /***********************
@@ -333,7 +412,6 @@ function startYearListeners(year){
 
   const { start, end } = yearRangeTs(year);
 
-  // incomes for year
   unsubIncome = incomesCol(currentUser.uid, currentProfileId)
     .orderBy("dateTs")
     .startAt(start)
@@ -343,7 +421,6 @@ function startYearListeners(year){
       renderAll();
     });
 
-  // expenses for year
   unsubExpense = expensesCol(currentUser.uid, currentProfileId)
     .orderBy("dateTs")
     .startAt(start)
@@ -353,12 +430,12 @@ function startYearListeners(year){
       renderAll();
     });
 
-  // fixed templates (no year filter)
   unsubFixed = fixedCol(currentUser.uid, currentProfileId)
     .orderBy("name")
     .onSnapshot((snap) => {
       fixedTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       renderFixedList();
+      renderSavePlan(); // porque usa plantillas
     });
 }
 
@@ -367,7 +444,6 @@ function startYearListeners(year){
  ***********************/
 function ensureCharts(){
   if (!els.lineChart || !els.donutChart) return;
-
   const months = Array.from({length:12}, (_,i)=>monthName(i));
 
   if (!lineChart) {
@@ -383,8 +459,7 @@ function ensureCharts(){
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: true } },
-        scales: { y: { ticks: { callback: (v)=>v } } }
+        plugins: { legend: { display: true } }
       }
     });
   }
@@ -393,10 +468,7 @@ function ensureCharts(){
     donutChart = new Chart(els.donutChart, {
       type: "doughnut",
       data: { labels: [], datasets: [{ label:"Gastos", data: [] }] },
-      options: {
-        responsive: true,
-        plugins: { legend: { display: true } }
-      }
+      options: { responsive: true, plugins: { legend: { display: true } } }
     });
   }
 }
@@ -437,24 +509,21 @@ function updateCharts(){
 }
 
 /***********************
- * Render lists + dashboard
+ * Render dashboard + lists
  ***********************/
 function renderDashboard(){
   const sumInc = incomes.reduce((a,b)=>a + Number(b.amount||0), 0);
   const sumExp = expenses.reduce((a,b)=>a + Number(b.amount||0), 0);
   const net = sumInc - sumExp;
 
-  setText(els.sumIncome, fmtMoneyByCurrency(sumInc));
-  setText(els.sumExpense, fmtMoneyByCurrency(sumExp));
-  setText(els.sumNet, fmtMoneyByCurrency(net));
-
+  setText(els.sumIncome, fmtMoney(sumInc));
+  setText(els.sumExpense, fmtMoney(sumExp));
+  setText(els.sumNet, fmtMoney(net));
   if (els.sumNet) els.sumNet.className = "strong " + (net >= 0 ? "ok" : "bad");
 }
 
 function renderIncomeList(){
-  if (!els.incomeRows) return;
   els.incomeRows.innerHTML = "";
-
   const sorted = [...incomes].sort((a,b)=>{
     const ad = a.dateTs?.toMillis?.() ?? 0;
     const bd = b.dateTs?.toMillis?.() ?? 0;
@@ -465,28 +534,21 @@ function renderIncomeList(){
     const d = it.dateTs?.toDate ? it.dateTs.toDate() : toDateAtLocalMidnight(it.dateStr);
     const row = document.createElement("div");
     row.className = "trow listRowIncome";
-    row.dataset.id = it.id;
-
     row.innerHTML = `
       <div>${isoDateFromDate(d)}</div>
       <div class="muted">${escapeHtml(it.note || "")}</div>
-      <div class="right strong">${fmtMoneyByCurrency(Number(it.amount||0))}</div>
+      <div class="right strong">${fmtMoney(Number(it.amount||0))}</div>
       <button class="btn danger ghost del" type="button">✕</button>
     `;
-
-    const del = row.querySelector(".del");
-    on(del,"click", async () => {
+    on(row.querySelector(".del"), "click", async () => {
       await incomesCol(currentUser.uid, currentProfileId).doc(it.id).delete();
     });
-
     els.incomeRows.appendChild(row);
   }
 }
 
 function renderExpenseList(){
-  if (!els.expenseRows) return;
   els.expenseRows.innerHTML = "";
-
   const sorted = [...expenses].sort((a,b)=>{
     const ad = a.dateTs?.toMillis?.() ?? 0;
     const bd = b.dateTs?.toMillis?.() ?? 0;
@@ -497,68 +559,196 @@ function renderExpenseList(){
     const d = it.dateTs?.toDate ? it.dateTs.toDate() : toDateAtLocalMidnight(it.dateStr);
     const row = document.createElement("div");
     row.className = "trow listRowExpense";
-    row.dataset.id = it.id;
-
     row.innerHTML = `
       <div>${isoDateFromDate(d)}</div>
       <div>${escapeHtml(it.name || "")}</div>
       <div class="muted">${escapeHtml(it.category || "Sin categoría")}</div>
-      <div class="right strong">${fmtMoneyByCurrency(Number(it.amount||0))}</div>
+      <div class="right strong">${fmtMoney(Number(it.amount||0))}</div>
       <button class="btn danger ghost del" type="button">✕</button>
     `;
-
-    const del = row.querySelector(".del");
-    on(del,"click", async () => {
+    on(row.querySelector(".del"), "click", async () => {
       await expensesCol(currentUser.uid, currentProfileId).doc(it.id).delete();
     });
-
     els.expenseRows.appendChild(row);
   }
 }
 
 function renderFixedList(){
-  if (!els.fixedRows) return;
   els.fixedRows.innerHTML = "";
-
   const sorted = [...fixedTemplates].sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
 
   for (const it of sorted) {
     const row = document.createElement("div");
     row.className = "trow listRowFixed";
-    row.dataset.id = it.id;
-
     row.innerHTML = `
       <div>${escapeHtml(it.name || "")}</div>
       <div class="muted">${escapeHtml(it.category || "Sin categoría")}</div>
       <div>${Number(it.day || 1)}</div>
-      <div class="right strong">${fmtMoneyByCurrency(Number(it.amount||0))}</div>
+      <div class="right strong">${fmtMoney(Number(it.amount||0))}</div>
       <button class="btn danger ghost del" type="button">✕</button>
     `;
-
-    const del = row.querySelector(".del");
-    on(del,"click", async () => {
+    on(row.querySelector(".del"), "click", async () => {
       await fixedCol(currentUser.uid, currentProfileId).doc(it.id).delete();
     });
-
     els.fixedRows.appendChild(row);
   }
 }
 
+/***********************
+ * Pay schedule + Save plan (ESTIMADO POR COBRO)
+ ***********************/
+function computeNextPayDates(count = 8){
+  const freq = meta?.payFrequency || "biweekly";
+  const today = startOfDay(new Date());
+  const out = [];
+
+  if (freq === "monthly") {
+    const payDay = clamp(Number(meta?.payDay || 15), 1, 31);
+    const now = new Date();
+    const thisMonth = new Date(now.getFullYear(), now.getMonth(), clamp(payDay,1,31), 0,0,0,0);
+    let next = startOfDay(thisMonth);
+    if (next < today) next = startOfDay(addMonths(next, 1));
+    for (let i=0; i<count; i++){
+      out.push(startOfDay(addMonths(next, i)));
+    }
+    return out;
+  }
+
+  // weekly / biweekly: needs lastPayDate
+  if (!meta?.lastPayDate) return out;
+
+  const step = (freq === "weekly") ? 7 : 14;
+  let d = startOfDay(new Date(meta.lastPayDate));
+  if (Number.isNaN(d.getTime())) return out;
+
+  // move forward to >= today
+  for (let i=0; i<800; i++){
+    if (d >= today) break;
+    d = startOfDay(addDays(d, step));
+  }
+  for (let i=0; i<count; i++){
+    out.push(startOfDay(addDays(d, step * i)));
+  }
+  return out;
+}
+
+function buildBillInstancesForHorizon(horizonEnd){
+  // Each fixed template => monthly bill instance for upcoming months until horizonEnd
+  const today = startOfDay(new Date());
+  const instances = [];
+
+  for (const t of fixedTemplates) {
+    const amount = Number(t.amount || 0);
+    if (amount <= 0) continue;
+
+    const day = clamp(Number(t.day || 1), 1, 31);
+
+    // Generate due dates month by month from current month to horizonEnd
+    let m = new Date(today.getFullYear(), today.getMonth(), 1, 0,0,0,0);
+    for (let k=0; k<24; k++){
+      const due = new Date(m.getFullYear(), m.getMonth(), clamp(day,1,31), 0,0,0,0);
+      const dueS = startOfDay(due);
+      // only include if due is in future horizon (>= today and <= horizonEnd)
+      if (dueS >= today && dueS <= horizonEnd) {
+        instances.push({
+          templateId: t.id,
+          name: t.name || "Fijo",
+          amount,
+          dueDate: dueS,
+          remaining: amount,
+        });
+      }
+      m = addMonths(m, 1);
+      if (m > horizonEnd) break;
+    }
+  }
+  return instances;
+}
+
+function renderSavePlan(){
+  if (!meta) return;
+
+  const payDates = computeNextPayDates(8);
+  setText(els.saveCount, String(payDates.length));
+
+  // UI for next pay date
+  if (payDates.length) setText(els.nextPayDate, fmtShortDate(payDates[0]));
+  else setText(els.nextPayDate, meta?.payFrequency === "monthly" ? "Configura día de cobro" : "Pon tu último cobro");
+
+  if (!payDates.length) {
+    setText(els.urgentSave, fmtMoney(0));
+    setText(els.nextSave, fmtMoney(0));
+    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Completa la configuración de cobro para ver el estimado.</span><span class="muted">—</span></div>`;
+    return;
+  }
+
+  const horizonEnd = payDates[payDates.length - 1];
+  const instances = buildBillInstancesForHorizon(horizonEnd);
+
+  // urgent: due before next pay
+  const nextPay = payDates[0];
+  let urgent = 0;
+  for (const inst of instances) {
+    if (inst.dueDate < nextPay) {
+      urgent += inst.remaining;
+      inst.remaining = 0; // exclude from plan
+    }
+  }
+
+  // simulate plan totals
+  const planTotals = [];
+  for (let i=0; i<payDates.length; i++){
+    const payDay = payDates[i];
+    let total = 0;
+
+    for (const inst of instances) {
+      if (inst.remaining <= 0) continue;
+      if (inst.dueDate < payDay) continue; // already due
+
+      // how many paydates from i to due date (inclusive)
+      let remainingPaychecks = 0;
+      for (let j=i; j<payDates.length; j++){
+        if (payDates[j] <= inst.dueDate) remainingPaychecks++;
+      }
+      if (remainingPaychecks <= 0) continue;
+
+      const contribution = inst.remaining / remainingPaychecks;
+      inst.remaining = Math.max(0, inst.remaining - contribution);
+      total += contribution;
+    }
+
+    planTotals.push({ date: payDay, total });
+  }
+
+  const nextSave = planTotals[0]?.total || 0;
+  setText(els.urgentSave, fmtMoney(urgent));
+  setText(els.nextSave, fmtMoney(nextSave));
+
+  els.savePlan.innerHTML = planTotals.map(p => `
+    <div class="planRow">
+      <span>${escapeHtml(fmtShortDate(p.date))}</span>
+      <span class="strong">${escapeHtml(fmtMoney(p.total))}</span>
+    </div>
+  `).join("");
+}
+
+/***********************
+ * Monthly salary panel (12 meses) - solo si cobro mensual
+ ***********************/
 function renderMonthlyPanel(){
-  const isMonthly = meta?.payMode === "monthly";
+  const isMonthly = (meta?.payFrequency === "monthly");
   toggleHidden(els.monthlyPanel, !isMonthly);
   toggleHidden(els.payDayWrap, !isMonthly);
 
   if (!isMonthly) return;
 
-  // build grid inputs 12 months
   const year = Number(els.yearSelect.value || nowYear());
   const payDay = clamp(Number(meta?.payDay || 15), 1, 31);
 
   els.monthlyGrid.innerHTML = "";
   for (let m=1; m<=12; m++){
     const id = `m-${year}-${String(m).padStart(2,"0")}`;
-    const existing = incomes.find(x => x.id === id); // deterministic id
+    const existing = incomes.find(x => x.id === id);
     const val = existing?.amount ? String(existing.amount) : "";
 
     const cell = document.createElement("div");
@@ -571,52 +761,8 @@ function renderMonthlyPanel(){
   }
 }
 
-function renderAll(){
-  if (!meta) return;
-  renderDashboard();
-  renderIncomeList();
-  renderExpenseList();
-  renderMonthlyPanel();
-  updateCharts();
-}
-
 /***********************
- * Profile open/load
- ***********************/
-async function openProfile(profileId){
-  currentProfileId = profileId;
-  localStorage.setItem("lastProfileId", profileId);
-
-  setCloudMsg("Cargando…");
-
-  const snap = await profileRef(currentUser.uid, profileId).get();
-  meta = snap.data() || {};
-
-  // defaults if missing
-  meta.displayName = meta.displayName || profileId;
-  meta.currency = meta.currency || "USD";
-  meta.payMode = meta.payMode || "manual";
-  meta.payDay = clamp(Number(meta.payDay || 15), 1, 31);
-
-  // UI populate
-  setText(els.whoTitle, `Perfil: ${meta.displayName}`);
-  els.profileName.value = meta.displayName;
-  els.currency.value = meta.currency;
-  els.payMode.value = meta.payMode;
-  els.payDay.value = String(meta.payDay);
-
-  buildYearSelect();
-
-  show("app");
-  setCloudMsg("Listo ✅");
-
-  startYearListeners(Number(els.yearSelect.value || nowYear()));
-  renderFixedList();
-  renderMonthlyPanel();
-}
-
-/***********************
- * Write meta updates
+ * Meta save (debounced)
  ***********************/
 let saveMetaTimer = null;
 function saveMetaDebounced(){
@@ -625,20 +771,20 @@ function saveMetaDebounced(){
     if (!currentUser || !currentProfileId || !meta) return;
     meta.updatedAt = new Date().toISOString();
     await profileRef(currentUser.uid, currentProfileId).set(meta, { merge:true });
-    setCloudMsg(`Guardado: ${new Date().toLocaleTimeString()}`);
+    setText(els.cloudMsg, `Guardado: ${new Date().toLocaleTimeString()}`);
   }, 250);
 }
 
 /***********************
- * Actions: add income/expense/fixed
+ * Actions
  ***********************/
 async function addIncome(){
   const dateStr = els.incomeDate.value;
   const amount = parseNumber(els.incomeAmount.value);
   const note = (els.incomeNote.value || "").trim();
 
-  if (!dateStr) { alert("Pon la fecha del ingreso."); return; }
-  if (amount <= 0) { alert("Pon un monto válido."); return; }
+  if (!dateStr) return alert("Pon la fecha del ingreso.");
+  if (amount <= 0) return alert("Pon un monto válido.");
 
   const dt = toDateAtLocalMidnight(dateStr);
   await incomesCol(currentUser.uid, currentProfileId).add({
@@ -656,12 +802,12 @@ async function addIncome(){
 async function addExpense(){
   const dateStr = els.expDate.value;
   const name = (els.expName.value || "").trim();
-  const category = (els.expCategory.value || "").trim() || "Sin categoría";
+  const category = els.expCategory.value || "Sin categoría";
   const amount = parseNumber(els.expAmount.value);
 
-  if (!dateStr) { alert("Pon la fecha del gasto."); return; }
-  if (!name) { alert("Pon el nombre del gasto."); return; }
-  if (amount <= 0) { alert("Pon un monto válido."); return; }
+  if (!dateStr) return alert("Pon la fecha del gasto.");
+  if (!name) return alert("Pon el nombre del gasto.");
+  if (amount <= 0) return alert("Pon un monto válido.");
 
   const dt = toDateAtLocalMidnight(dateStr);
   await expensesCol(currentUser.uid, currentProfileId).add({
@@ -679,12 +825,12 @@ async function addExpense(){
 
 async function addFixedTemplate(){
   const name = (els.fixedName.value || "").trim();
-  const category = (els.fixedCategory.value || "").trim() || "Sin categoría";
+  const category = els.fixedCategory.value || "Sin categoría";
   const amount = parseNumber(els.fixedAmount.value);
   const day = clamp(Number(els.fixedDay.value || 1), 1, 31);
 
-  if (!name) { alert("Pon el nombre del fijo."); return; }
-  if (amount <= 0) { alert("Pon un monto válido."); return; }
+  if (!name) return alert("Pon el nombre del fijo.");
+  if (amount <= 0) return alert("Pon un monto válido.");
 
   await fixedCol(currentUser.uid, currentProfileId).add({
     name, category, amount, day,
@@ -706,7 +852,6 @@ async function applyFixedToYear(){
       const dt = new Date(year, m-1, clamp(day,1,31), 0,0,0,0);
       const dateStr = isoDateFromDate(dt);
 
-      // determinístico (si ya existe lo actualiza)
       await expensesCol(currentUser.uid, currentProfileId).doc(id).set({
         dateStr,
         dateTs: TS.fromDate(dt),
@@ -727,10 +872,10 @@ async function saveMonthlySalaries(){
   const payDay = clamp(Number(meta.payDay || 15), 1, 31);
 
   const inputs = els.monthlyGrid.querySelectorAll("input[data-mid]");
-  let saved = 0, removed = 0;
+  let saved = 0;
 
   for (const inp of inputs) {
-    const id = inp.getAttribute("data-mid"); // m-YYYY-MM
+    const id = inp.getAttribute("data-mid");
     const amount = parseNumber(inp.value);
 
     const parts = id.split("-");
@@ -753,17 +898,13 @@ async function saveMonthlySalaries(){
       }, { merge:true });
       saved++;
     } else {
-      // si está vacío, intenta borrar si existía
-      try { await ref.delete(); removed++; } catch {}
+      try { await ref.delete(); } catch {}
     }
   }
 
   setText(els.monthlyMsg, `Guardado ✅ (${saved} meses).`);
 }
 
-/***********************
- * Export/Import
- ***********************/
 async function exportAll(){
   const year = Number(els.yearSelect.value || nowYear());
   const payload = {
@@ -789,14 +930,11 @@ async function exportAll(){
 async function importAll(file){
   const txt = await file.text();
   const data = JSON.parse(txt);
+  if (!data?.meta || !data?.year) return alert("Archivo inválido.");
 
-  if (!data?.meta || !data?.year) { alert("Archivo inválido."); return; }
-
-  // meta
   meta = { ...meta, ...data.meta };
   await profileRef(currentUser.uid, currentProfileId).set(meta, { merge:true });
 
-  // fixed templates: import as new docs (simple)
   if (Array.isArray(data.fixedTemplates)) {
     for (const t of data.fixedTemplates) {
       await fixedCol(currentUser.uid, currentProfileId).add({
@@ -809,8 +947,6 @@ async function importAll(file){
     }
   }
 
-  // incomes & expenses import to selected year only:
-  // (para no mezclar años accidentalmente)
   const year = Number(els.yearSelect.value || nowYear());
   const { start, end } = yearRangeTs(year);
   const startMs = start.toMillis();
@@ -850,26 +986,86 @@ async function importAll(file){
   alert("Importado ✅");
 }
 
-/***********************
- * Reset year
- ***********************/
 async function resetYear(){
   const year = Number(els.yearSelect.value || nowYear());
-  if (!confirm(`Esto borrará TODOS los ingresos y gastos del año ${year} en este perfil. ¿Continuar?`)) return;
+  if (!confirm(`Esto borrará TODOS los ingresos y gastos del año ${year}. ¿Continuar?`)) return;
 
   const { start, end } = yearRangeTs(year);
 
-  // delete incomes year
   const incSnap = await incomesCol(currentUser.uid, currentProfileId)
     .orderBy("dateTs").startAt(start).endBefore(end).get();
   for (const d of incSnap.docs) await d.ref.delete();
 
-  // delete expenses year
   const expSnap = await expensesCol(currentUser.uid, currentProfileId)
     .orderBy("dateTs").startAt(start).endBefore(end).get();
   for (const d of expSnap.docs) await d.ref.delete();
 
   alert("Año reseteado ✅");
+}
+
+/***********************
+ * Render all
+ ***********************/
+function renderAll(){
+  if (!meta) return;
+
+  // dashboard + charts + lists
+  renderDashboard();
+  renderIncomeList();
+  renderExpenseList();
+  updateCharts();
+
+  // categories selects
+  buildCategorySelect(els.fixedCategory, els.fixedCategory.value);
+  buildCategorySelect(els.expCategory, els.expCategory.value);
+
+  // monthly panel + save plan
+  renderMonthlyPanel();
+  renderSavePlan();
+}
+
+/***********************
+ * Open profile
+ ***********************/
+async function openProfile(profileId){
+  currentProfileId = profileId;
+  localStorage.setItem("lastProfileId", profileId);
+
+  setText(els.cloudMsg, "Cargando…");
+
+  const snap = await profileRef(currentUser.uid, profileId).get();
+  meta = snap.data() || {};
+
+  // defaults
+  meta.displayName = meta.displayName || profileId;
+  meta.currency = meta.currency || "USD";
+  meta.payFrequency = meta.payFrequency || "biweekly";
+  meta.lastPayDate = meta.lastPayDate || "";
+  meta.payDay = clamp(Number(meta.payDay || 15), 1, 31);
+  meta.customCategories = Array.isArray(meta.customCategories) ? meta.customCategories : [];
+
+  // UI
+  setText(els.whoTitle, `Perfil: ${meta.displayName}`);
+  els.profileName.value = meta.displayName;
+  els.currency.value = meta.currency;
+
+  buildYearSelect();
+
+  els.payFrequency.value = meta.payFrequency;
+  els.lastPayDate.value = meta.lastPayDate;
+  els.payDay.value = String(meta.payDay);
+  toggleHidden(els.payDayWrap, meta.payFrequency !== "monthly");
+
+  // build category selects
+  buildCategorySelect(els.fixedCategory, BASE_CATEGORIES[0]);
+  buildCategorySelect(els.expCategory, BASE_CATEGORIES[0]);
+
+  show("app");
+  setText(els.cloudMsg, "Listo ✅");
+
+  startYearListeners(Number(els.yearSelect.value || nowYear()));
+  renderFixedList();
+  renderAll();
 }
 
 /***********************
@@ -902,13 +1098,11 @@ on(els.btnLogin,"click", async ()=>{
 });
 
 on(els.btnLogout,"click", async ()=> auth.signOut());
-
 on(els.btnRefreshProfiles,"click", ()=> refreshProfilesUI());
 
-on(els.newPayMode,"change", ()=>{
-  toggleHidden(els.newPayDayWrap, els.newPayMode.value !== "monthly");
+on(els.newPayFrequency,"change", ()=>{
+  toggleHidden(els.newPayDayWrap, els.newPayFrequency.value !== "monthly");
 });
-
 on(els.btnCreateProfile,"click", ()=> createProfile());
 
 on(els.btnBackProfiles,"click", ()=>{
@@ -929,31 +1123,52 @@ on(els.profileName,"input", ()=>{
 on(els.currency,"change", ()=>{
   meta.currency = els.currency.value || "USD";
   saveMetaDebounced();
-  renderAll(); // refresh money formatting
+  renderAll();
 });
 
-on(els.payMode,"change", ()=>{
-  meta.payMode = els.payMode.value || "manual";
-  toggleHidden(els.payDayWrap, meta.payMode !== "monthly");
+on(els.payFrequency,"change", ()=>{
+  meta.payFrequency = els.payFrequency.value || "biweekly";
+  toggleHidden(els.payDayWrap, meta.payFrequency !== "monthly");
   saveMetaDebounced();
   renderMonthlyPanel();
+  renderSavePlan();
+});
+
+on(els.lastPayDate,"change", ()=>{
+  meta.lastPayDate = els.lastPayDate.value || "";
+  saveMetaDebounced();
+  renderSavePlan();
 });
 
 on(els.payDay,"input", ()=>{
   meta.payDay = clamp(Number(els.payDay.value || 15), 1, 31);
   saveMetaDebounced();
   renderMonthlyPanel();
+  renderSavePlan();
 });
 
-on(els.btnSaveMonthly,"click", ()=> saveMonthlySalaries());
+on(els.btnRecalcSave,"click", ()=> renderSavePlan());
+on(els.btnAddCategory,"click", ()=> addCategoryFlow());
+
+on(els.fixedCategory, "change", ()=>{
+  if (els.fixedCategory.value === "__ADD__") {
+    addCategoryFlow().then(()=> buildCategorySelect(els.fixedCategory, BASE_CATEGORIES[0]));
+  }
+});
+on(els.expCategory, "change", ()=>{
+  if (els.expCategory.value === "__ADD__") {
+    addCategoryFlow().then(()=> buildCategorySelect(els.expCategory, BASE_CATEGORIES[0]));
+  }
+});
 
 on(els.btnAddIncome,"click", ()=> addIncome());
 on(els.btnAddExpense,"click", ()=> addExpense());
 on(els.btnAddFixed,"click", ()=> addFixedTemplate());
 on(els.btnApplyFixedYear,"click", ()=> applyFixedToYear());
 
-on(els.btnExport,"click", ()=> exportAll());
+on(els.btnSaveMonthly,"click", ()=> saveMonthlySalaries());
 
+on(els.btnExport,"click", ()=> exportAll());
 on(els.importFile,"change", async (e)=>{
   const f = e.target.files?.[0];
   if (!f) return;
