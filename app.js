@@ -6,15 +6,11 @@ const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
 const setText = (el, txt) => el && (el.textContent = txt);
 const toggleHidden = (el, hidden) => el && el.classList.toggle("hidden", hidden);
 
-function uid() {
-  return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
-}
 function parseNumber(v) {
   const cleaned = String(v ?? "").replace(/,/g, "").trim();
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : 0;
 }
-function hasValue(v){ return String(v ?? "").trim().length > 0; }
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 
 function escapeHtml(s){
@@ -77,6 +73,15 @@ const BASE_CATEGORIES = [
   "Mercado",
   "Colegio",
   "Ayuda Familiar"
+];
+
+/***********************
+ * Donut colors (fix: ya no queda negra)
+ ***********************/
+const DONUT_COLORS = [
+  "#4aa3ff", "#38d488", "#ffcc00", "#ff7a7a", "#9b7bff",
+  "#00d4ff", "#ff8a00", "#00ff95", "#ffd1dc", "#a0ff4a",
+  "#ff4aa3", "#4afff3"
 ];
 
 /***********************
@@ -146,7 +151,6 @@ const els = {
   payDay: $("payDay"),
   nextPayDate: $("nextPayDate"),
   btnRecalcSave: $("btnRecalcSave"),
-
   btnAddCategory: $("btnAddCategory"),
 
   urgentSave: $("urgentSave"),
@@ -193,10 +197,10 @@ const els = {
 let currentUser = null;
 let currentProfileId = null;
 
-let meta = null;            // profile doc
-let incomes = [];           // year incomes
-let expenses = [];          // year expenses
-let fixedTemplates = [];    // templates
+let meta = null;
+let incomes = [];
+let expenses = [];
+let fixedTemplates = [];
 
 let unsubIncome = null;
 let unsubExpense = null;
@@ -224,7 +228,7 @@ function show(view){
 }
 
 /***********************
- * Money formatting per profile currency
+ * Money
  ***********************/
 function fmtMoney(n){
   const c = meta?.currency || "USD";
@@ -237,7 +241,7 @@ function fmtMoney(n){
 }
 
 /***********************
- * Year helpers
+ * Year
  ***********************/
 function nowYear(){ return new Date().getFullYear(); }
 function buildYearSelect(){
@@ -253,14 +257,13 @@ function yearRangeTs(year){
 }
 
 /***********************
- * Categories per profile (base + custom)
+ * Categories per profile
  ***********************/
 function getAllCategories(){
   const custom = Array.isArray(meta?.customCategories) ? meta.customCategories : [];
   const set = new Set([...BASE_CATEGORIES, ...custom].map(x => String(x).trim()).filter(Boolean));
   return Array.from(set);
 }
-
 function buildCategorySelect(selectEl, value){
   if (!selectEl) return;
   const cats = getAllCategories();
@@ -273,7 +276,6 @@ function buildCategorySelect(selectEl, value){
   if (value && cats.includes(value)) selectEl.value = value;
   else if (cats.length) selectEl.value = cats[0];
 }
-
 async function addCategoryFlow(){
   const name = prompt("Nueva categoría (ej: Internet, Gym, etc.)");
   const clean = String(name ?? "").trim();
@@ -286,7 +288,6 @@ async function addCategoryFlow(){
   meta.customCategories = Array.from(set);
   saveMetaDebounced();
 
-  // rebuild selects
   buildCategorySelect(els.fixedCategory, els.fixedCategory.value);
   buildCategorySelect(els.expCategory, els.expCategory.value);
 }
@@ -320,7 +321,6 @@ async function ensureDefaultProfiles(uid){
     updatedAt: new Date().toISOString(),
   }, { merge:true });
 }
-
 async function listProfiles(uid){
   const snap = await db.collection("users").doc(uid).collection("profiles").get();
   return snap.docs.map(d => ({ id:d.id, ...d.data() }));
@@ -403,7 +403,6 @@ function stopListeners(){
   if (unsubFixed) unsubFixed();
   unsubIncome = unsubExpense = unsubFixed = null;
 }
-
 function startYearListeners(year){
   stopListeners();
   incomes = [];
@@ -435,12 +434,12 @@ function startYearListeners(year){
     .onSnapshot((snap) => {
       fixedTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() }));
       renderFixedList();
-      renderSavePlan(); // porque usa plantillas
+      renderSavePlan(); // usa plantillas
     });
 }
 
 /***********************
- * Charts
+ * Charts (FIX donut colors)
  ***********************/
 function ensureCharts(){
   if (!els.lineChart || !els.donutChart) return;
@@ -459,7 +458,13 @@ function ensureCharts(){
       },
       options: {
         responsive: true,
-        plugins: { legend: { display: true } }
+        plugins: {
+          legend: { labels: { color: "#eaf0ff" } }
+        },
+        scales: {
+          x: { ticks: { color: "#a8b2cc" }, grid: { color: "rgba(255,255,255,.06)" } },
+          y: { ticks: { color: "#a8b2cc" }, grid: { color: "rgba(255,255,255,.06)" } }
+        }
       }
     });
   }
@@ -467,8 +472,13 @@ function ensureCharts(){
   if (!donutChart) {
     donutChart = new Chart(els.donutChart, {
       type: "doughnut",
-      data: { labels: [], datasets: [{ label:"Gastos", data: [] }] },
-      options: { responsive: true, plugins: { legend: { display: true } } }
+      data: { labels: [], datasets: [{ label:"Gastos", data: [], backgroundColor: [] }] },
+      options: {
+        responsive: true,
+        plugins: {
+          legend: { labels: { color: "#eaf0ff" } }
+        }
+      }
     });
   }
 }
@@ -495,6 +505,7 @@ function updateCharts(){
   lineChart.data.datasets[2].data = byMonthNet;
   lineChart.update();
 
+  // gastos por categoría
   const catMap = new Map();
   for (const it of expenses) {
     const cat = String(it.category || "Sin categoría").trim() || "Sin categoría";
@@ -505,6 +516,8 @@ function updateCharts(){
 
   donutChart.data.labels = labels;
   donutChart.data.datasets[0].data = data;
+  donutChart.data.datasets[0].backgroundColor = labels.map((_,i)=>DONUT_COLORS[i % DONUT_COLORS.length]);
+  donutChart.data.datasets[0].borderColor = "rgba(0,0,0,0)";
   donutChart.update();
 }
 
@@ -595,145 +608,7 @@ function renderFixedList(){
 }
 
 /***********************
- * Pay schedule + Save plan (ESTIMADO POR COBRO)
- ***********************/
-function computeNextPayDates(count = 8){
-  const freq = meta?.payFrequency || "biweekly";
-  const today = startOfDay(new Date());
-  const out = [];
-
-  if (freq === "monthly") {
-    const payDay = clamp(Number(meta?.payDay || 15), 1, 31);
-    const now = new Date();
-    const thisMonth = new Date(now.getFullYear(), now.getMonth(), clamp(payDay,1,31), 0,0,0,0);
-    let next = startOfDay(thisMonth);
-    if (next < today) next = startOfDay(addMonths(next, 1));
-    for (let i=0; i<count; i++){
-      out.push(startOfDay(addMonths(next, i)));
-    }
-    return out;
-  }
-
-  // weekly / biweekly: needs lastPayDate
-  if (!meta?.lastPayDate) return out;
-
-  const step = (freq === "weekly") ? 7 : 14;
-  let d = startOfDay(new Date(meta.lastPayDate));
-  if (Number.isNaN(d.getTime())) return out;
-
-  // move forward to >= today
-  for (let i=0; i<800; i++){
-    if (d >= today) break;
-    d = startOfDay(addDays(d, step));
-  }
-  for (let i=0; i<count; i++){
-    out.push(startOfDay(addDays(d, step * i)));
-  }
-  return out;
-}
-
-function buildBillInstancesForHorizon(horizonEnd){
-  // Each fixed template => monthly bill instance for upcoming months until horizonEnd
-  const today = startOfDay(new Date());
-  const instances = [];
-
-  for (const t of fixedTemplates) {
-    const amount = Number(t.amount || 0);
-    if (amount <= 0) continue;
-
-    const day = clamp(Number(t.day || 1), 1, 31);
-
-    // Generate due dates month by month from current month to horizonEnd
-    let m = new Date(today.getFullYear(), today.getMonth(), 1, 0,0,0,0);
-    for (let k=0; k<24; k++){
-      const due = new Date(m.getFullYear(), m.getMonth(), clamp(day,1,31), 0,0,0,0);
-      const dueS = startOfDay(due);
-      // only include if due is in future horizon (>= today and <= horizonEnd)
-      if (dueS >= today && dueS <= horizonEnd) {
-        instances.push({
-          templateId: t.id,
-          name: t.name || "Fijo",
-          amount,
-          dueDate: dueS,
-          remaining: amount,
-        });
-      }
-      m = addMonths(m, 1);
-      if (m > horizonEnd) break;
-    }
-  }
-  return instances;
-}
-
-function renderSavePlan(){
-  if (!meta) return;
-
-  const payDates = computeNextPayDates(8);
-  setText(els.saveCount, String(payDates.length));
-
-  // UI for next pay date
-  if (payDates.length) setText(els.nextPayDate, fmtShortDate(payDates[0]));
-  else setText(els.nextPayDate, meta?.payFrequency === "monthly" ? "Configura día de cobro" : "Pon tu último cobro");
-
-  if (!payDates.length) {
-    setText(els.urgentSave, fmtMoney(0));
-    setText(els.nextSave, fmtMoney(0));
-    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Completa la configuración de cobro para ver el estimado.</span><span class="muted">—</span></div>`;
-    return;
-  }
-
-  const horizonEnd = payDates[payDates.length - 1];
-  const instances = buildBillInstancesForHorizon(horizonEnd);
-
-  // urgent: due before next pay
-  const nextPay = payDates[0];
-  let urgent = 0;
-  for (const inst of instances) {
-    if (inst.dueDate < nextPay) {
-      urgent += inst.remaining;
-      inst.remaining = 0; // exclude from plan
-    }
-  }
-
-  // simulate plan totals
-  const planTotals = [];
-  for (let i=0; i<payDates.length; i++){
-    const payDay = payDates[i];
-    let total = 0;
-
-    for (const inst of instances) {
-      if (inst.remaining <= 0) continue;
-      if (inst.dueDate < payDay) continue; // already due
-
-      // how many paydates from i to due date (inclusive)
-      let remainingPaychecks = 0;
-      for (let j=i; j<payDates.length; j++){
-        if (payDates[j] <= inst.dueDate) remainingPaychecks++;
-      }
-      if (remainingPaychecks <= 0) continue;
-
-      const contribution = inst.remaining / remainingPaychecks;
-      inst.remaining = Math.max(0, inst.remaining - contribution);
-      total += contribution;
-    }
-
-    planTotals.push({ date: payDay, total });
-  }
-
-  const nextSave = planTotals[0]?.total || 0;
-  setText(els.urgentSave, fmtMoney(urgent));
-  setText(els.nextSave, fmtMoney(nextSave));
-
-  els.savePlan.innerHTML = planTotals.map(p => `
-    <div class="planRow">
-      <span>${escapeHtml(fmtShortDate(p.date))}</span>
-      <span class="strong">${escapeHtml(fmtMoney(p.total))}</span>
-    </div>
-  `).join("");
-}
-
-/***********************
- * Monthly salary panel (12 meses) - solo si cobro mensual
+ * Monthly salary panel (solo si "monthly")
  ***********************/
 function renderMonthlyPanel(){
   const isMonthly = (meta?.payFrequency === "monthly");
@@ -759,6 +634,156 @@ function renderMonthlyPanel(){
     `;
     els.monthlyGrid.appendChild(cell);
   }
+}
+
+/***********************
+ * ✅ MÓDULO SEMANAL/QUINCENAL (ARREGLADO)
+ * Objetivo: cuánto separar POR COBRO para cubrir FIJOS del mes
+ * - Planea el mes del PRÓXIMO COBRO (no el mes “de hoy” si ya viene otro mes)
+ * - Si un fijo ya fue aplicado/pagado como expense "source=fixedTemplate", no lo cuenta 2 veces
+ ***********************/
+function getNextPayDate(){
+  const freq = meta?.payFrequency || "biweekly";
+  const today = startOfDay(new Date());
+
+  if (freq === "monthly") {
+    const payDay = clamp(Number(meta?.payDay || 15), 1, 31);
+    const now = new Date();
+    let next = startOfDay(new Date(now.getFullYear(), now.getMonth(), payDay, 0,0,0,0));
+    if (next < today) next = startOfDay(new Date(now.getFullYear(), now.getMonth()+1, payDay, 0,0,0,0));
+    return next;
+  }
+
+  // weekly/biweekly
+  if (!meta?.lastPayDate) return null;
+  let d = startOfDay(new Date(meta.lastPayDate));
+  if (Number.isNaN(d.getTime())) return null;
+
+  const step = (freq === "weekly") ? 7 : 14;
+
+  // si lo que pusiste fue "último cobro" => próximo = último + step
+  if (d <= today) d = startOfDay(addDays(d, step));
+  while (d < today) d = startOfDay(addDays(d, step));
+
+  return d;
+}
+
+function monthBounds(date){
+  const y = date.getFullYear();
+  const m = date.getMonth();
+  const start = startOfDay(new Date(y, m, 1, 0,0,0,0));
+  const end = startOfDay(new Date(y, m+1, 0, 0,0,0,0));
+  return { start, end };
+}
+
+function getPayDatesInMonth(nextPay, monthEnd){
+  const freq = meta?.payFrequency || "biweekly";
+  const dates = [];
+
+  if (!nextPay) return dates;
+
+  if (freq === "monthly") {
+    dates.push(startOfDay(nextPay));
+    return dates;
+  }
+
+  const step = (freq === "weekly") ? 7 : 14;
+  let d = startOfDay(nextPay);
+  while (d <= monthEnd) {
+    dates.push(d);
+    d = startOfDay(addDays(d, step));
+  }
+  return dates;
+}
+
+function fixedAlreadyPaidThisMonth(templateId, monthStart, monthEnd){
+  // si el usuario aplicó fijos al año, aparecen como expense source=fixedTemplate + templateId
+  return expenses.some(e => {
+    if (e.source !== "fixedTemplate") return false;
+    if (e.templateId !== templateId) return false;
+    const dt = e.dateTs?.toDate ? startOfDay(e.dateTs.toDate()) : startOfDay(toDateAtLocalMidnight(e.dateStr));
+    return dt >= monthStart && dt <= monthEnd;
+  });
+}
+
+function renderSavePlan(){
+  if (!meta) return;
+
+  const nextPay = getNextPayDate();
+
+  // ✅ FIX: nextPayDate es INPUT, no texto
+  if (els.nextPayDate) els.nextPayDate.value = nextPay ? fmtShortDate(nextPay) : "";
+
+  if (!nextPay) {
+    setText(els.urgentSave, fmtMoney(0));
+    setText(els.nextSave, fmtMoney(0));
+    setText(els.saveCount, "0");
+    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Configura “Último cobro” (Semanal/Quincenal) o “Día de cobro” (Mensual).</span><span class="muted">—</span></div>`;
+    return;
+  }
+
+  // Planificamos el MES del próximo cobro
+  const { start: mStart, end: mEnd } = monthBounds(nextPay);
+  const payDates = getPayDatesInMonth(nextPay, mEnd);
+  setText(els.saveCount, String(payDates.length));
+
+  // Construir lista de FIJOS de ese mes (no los que ya fueron pagados)
+  let urgent = 0;
+  const planTotals = payDates.map(d => ({ date: d, total: 0 }));
+
+  const monthLabel = `${monthName(nextPay.getMonth())} ${nextPay.getFullYear()}`;
+
+  for (const t of fixedTemplates) {
+    const amount = Number(t.amount || 0);
+    if (amount <= 0) continue;
+
+    const day = clamp(Number(t.day || 1), 1, 31);
+
+    // fecha de vencimiento en este mes (ajustando al último día real)
+    const lastDay = new Date(mStart.getFullYear(), mStart.getMonth()+1, 0).getDate();
+    const due = startOfDay(new Date(mStart.getFullYear(), mStart.getMonth(), Math.min(day, lastDay), 0,0,0,0));
+
+    // si ya fue aplicado/pagado como fijo este mes => no lo contamos
+    if (fixedAlreadyPaidThisMonth(t.id, mStart, mEnd)) continue;
+
+    // si vence antes del próximo cobro => urgente (pagar con dinero existente)
+    if (due < nextPay) {
+      urgent += amount;
+      continue;
+    }
+
+    // cuántos cobros hay antes (o el mismo día) del vencimiento
+    const eligible = payDates.filter(p => p <= due);
+    if (!eligible.length) {
+      urgent += amount;
+      continue;
+    }
+
+    // repartir el monto entre esos cobros
+    const share = amount / eligible.length;
+    for (const p of eligible) {
+      const idx = payDates.findIndex(x => x.getTime() === p.getTime());
+      if (idx >= 0) planTotals[idx].total += share;
+    }
+  }
+
+  // resultados
+  const nextSave = planTotals[0]?.total || 0;
+  setText(els.urgentSave, fmtMoney(urgent));
+  setText(els.nextSave, fmtMoney(nextSave));
+
+  // render UI
+  els.savePlan.innerHTML = `
+    <div class="planRow">
+      <span class="muted">Mes planificado</span>
+      <span class="strong">${escapeHtml(monthLabel)}</span>
+    </div>
+  ` + planTotals.map(p => `
+    <div class="planRow">
+      <span>${escapeHtml(fmtShortDate(p.date))}</span>
+      <span class="strong">${escapeHtml(fmtMoney(p.total))}</span>
+    </div>
+  `).join("");
 }
 
 /***********************
@@ -1009,17 +1034,14 @@ async function resetYear(){
 function renderAll(){
   if (!meta) return;
 
-  // dashboard + charts + lists
   renderDashboard();
   renderIncomeList();
   renderExpenseList();
   updateCharts();
 
-  // categories selects
   buildCategorySelect(els.fixedCategory, els.fixedCategory.value);
   buildCategorySelect(els.expCategory, els.expCategory.value);
 
-  // monthly panel + save plan
   renderMonthlyPanel();
   renderSavePlan();
 }
@@ -1036,7 +1058,6 @@ async function openProfile(profileId){
   const snap = await profileRef(currentUser.uid, profileId).get();
   meta = snap.data() || {};
 
-  // defaults
   meta.displayName = meta.displayName || profileId;
   meta.currency = meta.currency || "USD";
   meta.payFrequency = meta.payFrequency || "biweekly";
@@ -1044,7 +1065,6 @@ async function openProfile(profileId){
   meta.payDay = clamp(Number(meta.payDay || 15), 1, 31);
   meta.customCategories = Array.isArray(meta.customCategories) ? meta.customCategories : [];
 
-  // UI
   setText(els.whoTitle, `Perfil: ${meta.displayName}`);
   els.profileName.value = meta.displayName;
   els.currency.value = meta.currency;
@@ -1056,7 +1076,6 @@ async function openProfile(profileId){
   els.payDay.value = String(meta.payDay);
   toggleHidden(els.payDayWrap, meta.payFrequency !== "monthly");
 
-  // build category selects
   buildCategorySelect(els.fixedCategory, BASE_CATEGORIES[0]);
   buildCategorySelect(els.expCategory, BASE_CATEGORIES[0]);
 
