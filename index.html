@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mis Finanzas</title>
-  <link rel="stylesheet" href="styles.css?v=1.2.0"/>
+  <link rel="stylesheet" href="styles.css?v=1.2.1"/>
 </head>
 <body>
   <div class="wrap">
@@ -190,23 +190,31 @@
             <button id="btnAddIncome" class="btn" type="button">+ Guardar ingreso</button>
           </div>
 
+          <!-- ✅ GASTO: nombre ya NO es obligatorio -->
           <div id="expenseForm" class="stack mt hidden">
             <label class="field">
               <span>Fecha</span>
               <input id="expDate" type="date"/>
             </label>
-            <label class="field">
-              <span>Nombre</span>
-              <input id="expName" placeholder="Ej: Gasolina"/>
-            </label>
+
             <label class="field">
               <span>Categoría</span>
               <select id="expCategory"></select>
             </label>
+
             <label class="field">
               <span>Monto</span>
               <input id="expAmount" inputmode="decimal" placeholder="Ej: 45"/>
             </label>
+
+            <details class="mt">
+              <summary class="muted tiny">Detalles (opcional)</summary>
+              <label class="field mt">
+                <span>Nombre / Nota (opcional)</span>
+                <input id="expName" placeholder="Ej: Walmart, Costco, Gasolina..."/>
+              </label>
+            </details>
+
             <button id="btnAddExpense" class="btn" type="button">+ Guardar gasto</button>
           </div>
 
@@ -396,6 +404,6 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <script src="app.js?v=1.2.0"></script>
+  <script src="app.js?v=1.2.1"></script>
 </body>
 </html>

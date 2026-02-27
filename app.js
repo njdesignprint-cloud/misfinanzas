@@ -1,4 +1,4 @@
-// v1.2.0
+// v1.2.1
 const $ = (id) => document.getElementById(id);
 const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
 const setText = (el, txt) => el && (el.textContent = txt);
@@ -176,9 +176,9 @@ const els = {
   incomeRows: $("incomeRows"),
 
   expDate: $("expDate"),
-  expName: $("expName"),
   expCategory: $("expCategory"),
   expAmount: $("expAmount"),
+  expName: $("expName"), // opcional
   btnAddExpense: $("btnAddExpense"),
   expenseRows: $("expenseRows"),
 };
@@ -420,7 +420,7 @@ async function seedDefaultFixedOnce(){
     const key = name.trim().toLowerCase();
     if (existing.has(key)) continue;
 
-    const ref = col.doc(); // nuevo doc
+    const ref = col.doc();
     batch.set(ref, {
       name,
       category: name,
@@ -635,11 +635,7 @@ function renderFixedList(){
     const delEl = row.querySelector(".del");
 
     on(catEl, "change", async () => {
-      if (catEl.value === "__ADD__") {
-        await addCategoryFlow();
-        renderFixedList();
-        return;
-      }
+      if (catEl.value === "__ADD__") { await addCategoryFlow(); renderFixedList(); return; }
       saveFixedDebounced(it.id, { category: catEl.value });
       renderSavePlan();
     });
@@ -651,7 +647,6 @@ function renderFixedList(){
     });
 
     on(amtEl, "input", () => {
-      // guardamos como número
       const v = parseNumber(amtEl.value);
       saveFixedDebounced(it.id, { amount: v });
       renderSavePlan();
@@ -672,7 +667,7 @@ function renderMonthlyPanel(){
   const isMonthly = (meta?.payFrequency === "monthly");
   toggleHidden(els.monthlyPanel, !isMonthly);
   toggleHidden(els.payDayWrap, !isMonthly);
-  toggleHidden(els.quickPayWrap, isMonthly); // no quick pay en mensual
+  toggleHidden(els.quickPayWrap, isMonthly);
 
   if (!isMonthly) return;
 
@@ -740,7 +735,6 @@ function getNextPayDate(){
   if (!last) return null;
 
   const step = (freq === "weekly") ? 7 : 14;
-
   if (last > today) return last;
 
   let next = startOfDay(addDays(last, step));
@@ -784,7 +778,6 @@ function renderSavePlan(){
   const nextPay = getNextPayDate();
   if (els.nextPayDate) els.nextPayDate.value = nextPay ? fmtShortDate(nextPay) : "";
 
-  // Quick pay visible solo para semanal/quincenal
   const isMonthly = meta.payFrequency === "monthly";
   toggleHidden(els.quickPayWrap, isMonthly);
 
@@ -807,7 +800,6 @@ function renderSavePlan(){
     const amount = Number(t.amount || 0);
     if (amount <= 0) continue;
 
-    // no contamos si ya lo aplicaste como gasto fijo del año (para no duplicar)
     if (fixedAlreadyPaidThisMonth(t.id, mStart, mEnd)) continue;
 
     const day = clamp(Number(t.day || 1), 1, 31);
@@ -879,14 +871,15 @@ async function addIncome(dateStr, amount, note){
   });
 }
 
+/** ✅ GASTO: name NO requerido (si está vacío, usamos la categoría) */
 async function addExpense(){
   const dateStr = els.expDate.value;
-  const name = (els.expName.value || "").trim();
   const category = els.expCategory.value || "Sin categoría";
+  const nameInput = (els.expName?.value || "").trim(); // opcional
+  const name = nameInput || category; // fallback
   const amount = parseNumber(els.expAmount.value);
 
   if (!dateStr) return alert("Pon la fecha del gasto.");
-  if (!name) return alert("Pon el nombre del gasto.");
   if (amount <= 0) return alert("Pon un monto válido.");
 
   const dt = toDateAtLocalMidnight(dateStr);
@@ -899,7 +892,7 @@ async function addExpense(){
     createdAt: new Date().toISOString(),
   });
 
-  els.expName.value = "";
+  if (els.expName) els.expName.value = "";
   els.expAmount.value = "";
 }
 
@@ -989,9 +982,6 @@ async function saveMonthlySalaries(){
   setText(els.monthlyMsg, `Guardado ✅ (${saved} meses).`);
 }
 
-/***********************
- * Export/Import/Reset
- ***********************/
 async function exportAll(){
   const year = Number(els.yearSelect.value || nowYear());
   const payload = { exportedAt: new Date().toISOString(), profileId: currentProfileId, meta, year, incomes, expenses, fixedTemplates };
@@ -1071,15 +1061,12 @@ async function openProfile(profileId){
   buildCategorySelect(els.fixedCategory, BASE_CATEGORIES[0]);
   buildCategorySelect(els.expCategory, BASE_CATEGORIES[0]);
 
-  // Plan quick pay defaults
   if (els.quickPayDate) els.quickPayDate.value = isoDateFromDate(new Date());
 
   show("app");
   setText(els.cloudMsg, "Listo ✅");
 
   startYearListeners(Number(els.yearSelect.value || nowYear()));
-
-  // Seed defaults once (no borra nada)
   await seedDefaultFixedOnce();
 
   renderAll();
@@ -1158,8 +1145,13 @@ on(els.lastPayDate,"change", ()=>{ meta.lastPayDate=els.lastPayDate.value||""; s
 on(els.payDay,"input", ()=>{ meta.payDay=clamp(Number(els.payDay.value||15),1,31); saveMetaDebounced(); renderMonthlyPanel(); renderSavePlan(); });
 
 on(els.btnAddCategory,"click", ()=> addCategoryFlow());
+
 on(els.fixedCategory,"change", async ()=> { if (els.fixedCategory.value==="__ADD__") await addCategoryFlow(); });
-on(els.expCategory,"change", async ()=> { if (els.expCategory.value==="__ADD__") await addCategoryFlow(); });
+on(els.expCategory,"change", async ()=> {
+  if (els.expCategory.value === "__ADD__") { await addCategoryFlow(); return; }
+  // Autollenar nota si está vacío (opcional)
+  if (els.expName && !els.expName.value.trim()) els.expName.value = els.expCategory.value;
+});
 
 on(els.btnRecalcSave,"click", ()=> renderSavePlan());
 
