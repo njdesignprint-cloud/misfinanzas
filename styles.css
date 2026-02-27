@@ -37,7 +37,6 @@ h2{margin:0; font-size:16px;}
   margin:12px 0;
   box-shadow: 0 12px 28px rgba(0,0,0,.35);
 }
-
 .subcard{
   background: rgba(0,0,0,.18);
   border:1px solid rgba(255,255,255,.08);
@@ -47,18 +46,9 @@ h2{margin:0; font-size:16px;}
 
 .top{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
 .topActions{display:flex; gap:8px; flex-wrap:wrap;}
-
-.appHeader{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:10px;
-}
-
+.appHeader{display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px;}
 .rowBetween{display:flex; justify-content:space-between; align-items:center; gap:12px;}
 .rowActions{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
-
 .stack{display:flex; flex-direction:column; gap:10px;}
 
 .field span{display:block; font-size:12px; color:var(--muted); margin-bottom:6px;}
@@ -103,9 +93,6 @@ input:focus, select:focus{
   border:1px solid rgba(255,255,255,.06);
 }
 
-.ok{color:var(--ok)}
-.bad{color:var(--bad)}
-
 .tabs{
   display:flex;
   gap:8px;
@@ -132,7 +119,6 @@ input:focus, select:focus{
   background: rgba(74,163,255,.18);
   border-color: rgba(74,163,255,.35);
 }
-.tab{margin-top:10px;}
 
 .seg{
   display:flex;
@@ -173,8 +159,8 @@ input:focus, select:focus{
 .listHeadExpense{grid-template-columns: 1fr 1.3fr 1fr .8fr 44px;}
 .listRowExpense{grid-template-columns: 1fr 1.3fr 1fr .8fr 44px;}
 
-.listHeadFixed{grid-template-columns: 1.3fr 1fr .5fr .8fr 44px;}
-.listRowFixed{grid-template-columns: 1.3fr 1fr .5fr .8fr 44px;}
+.listHeadFixedEdit{grid-template-columns: 1.3fr 1fr .6fr .8fr 44px;}
+.listRowFixedEdit{grid-template-columns: 1.3fr 1fr .6fr .8fr 44px;}
 
 .right{text-align:right;}
 
@@ -231,12 +217,12 @@ input:focus, select:focus{
   margin-bottom:6px;
 }
 
-/* Mobile tweaks */
+/* Mobile */
 @media (max-width: 520px){
   .profilesList{grid-template-columns:1fr;}
   .listHeadIncome, .listRowIncome,
   .listHeadExpense, .listRowExpense,
-  .listHeadFixed, .listRowFixed{
+  .listHeadFixedEdit, .listRowFixedEdit{
     grid-template-columns: 1fr;
   }
   .right{text-align:left;}

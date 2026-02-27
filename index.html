@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mis Finanzas</title>
-  <link rel="stylesheet" href="styles.css"/>
+  <link rel="stylesheet" href="styles.css?v=1.2.0"/>
 </head>
 <body>
   <div class="wrap">
@@ -50,7 +50,7 @@
       <div class="rowBetween">
         <div>
           <h2>Perfiles</h2>
-          <p class="muted tiny">Cada perfil tiene su moneda, cobro, categorías y datos.</p>
+          <p class="muted tiny">Cada perfil guarda moneda, cobro, fijos y datos.</p>
         </div>
         <button id="btnRefreshProfiles" class="btn ghost" type="button">Actualizar</button>
       </div>
@@ -100,7 +100,6 @@
 
     <!-- APP -->
     <section id="appView" class="card hidden appCard">
-      <!-- Header mini -->
       <div class="appHeader">
         <div>
           <div class="muted tiny">Perfil</div>
@@ -109,7 +108,6 @@
         <button id="btnBackProfiles" class="btn ghost" type="button">Cambiar</button>
       </div>
 
-      <!-- Tabs -->
       <nav class="tabs">
         <button id="navPlan" class="tabBtn active" type="button">Plan</button>
         <button id="navAdd" class="tabBtn" type="button">Agregar</button>
@@ -123,6 +121,20 @@
           <div class="rowBetween">
             <h2>Apartar por cobro</h2>
             <button id="btnRecalcSave" class="btn ghost" type="button">Actualizar</button>
+          </div>
+
+          <!-- Quick paycheck (solo semanal/quincenal) -->
+          <div id="quickPayWrap" class="stack mt hidden">
+            <div class="muted tiny">Cobro (Semanal/Quincenal)</div>
+            <label class="field">
+              <span>Fecha cobro</span>
+              <input id="quickPayDate" type="date"/>
+            </label>
+            <label class="field">
+              <span>Monto cobrado</span>
+              <input id="quickPayAmount" inputmode="decimal" placeholder="Ej: 1200"/>
+            </label>
+            <button id="btnAddQuickPay" class="btn" type="button">+ Guardar cobro</button>
           </div>
 
           <div class="stack mt">
@@ -148,7 +160,7 @@
           </div>
 
           <div id="savePlan" class="plan mt"></div>
-          <p class="muted tiny mt">Este cálculo usa SOLO tus gastos fijos (plantillas) del mes actual.</p>
+          <p class="muted tiny mt">Este cálculo usa SOLO tus gastos fijos del mes actual.</p>
         </div>
       </section>
 
@@ -162,7 +174,6 @@
             <button id="segExpense" class="segBtn" type="button">Gasto</button>
           </div>
 
-          <!-- Income form -->
           <div id="incomeForm" class="stack mt">
             <label class="field">
               <span>Fecha</span>
@@ -174,12 +185,11 @@
             </label>
             <label class="field">
               <span>Nota (opcional)</span>
-              <input id="incomeNote" placeholder="Ej: Cobro semana 1"/>
+              <input id="incomeNote" placeholder="Ej: Cobro"/>
             </label>
             <button id="btnAddIncome" class="btn" type="button">+ Guardar ingreso</button>
           </div>
 
-          <!-- Expense form -->
           <div id="expenseForm" class="stack mt hidden">
             <label class="field">
               <span>Fecha</span>
@@ -257,14 +267,11 @@
               <div class="muted tiny">Ingresos vs Gastos</div>
               <canvas id="lineChart" height="160"></canvas>
             </div>
-
             <div class="chartCard">
               <div class="muted tiny">Gastos por categoría</div>
               <canvas id="donutChart" height="160"></canvas>
             </div>
           </div>
-
-          <p class="muted tiny mt">Las gráficas se actualizan con lo que vayas agregando.</p>
         </div>
       </section>
 
@@ -326,33 +333,29 @@
           <div class="stack mt">
             <label class="field">
               <span>Nombre</span>
-              <input id="fixedName" placeholder="Ej: Renta"/>
+              <input id="fixedName" placeholder="Ej: Internet"/>
             </label>
-
             <label class="field">
               <span>Categoría</span>
               <select id="fixedCategory"></select>
             </label>
-
             <label class="field">
               <span>Monto</span>
-              <input id="fixedAmount" inputmode="decimal" placeholder="Ej: 1800"/>
+              <input id="fixedAmount" inputmode="decimal" placeholder="Ej: 80"/>
             </label>
-
             <label class="field">
               <span>Día del mes (1-31)</span>
-              <input id="fixedDay" type="number" min="1" max="31" placeholder="Ej: 1"/>
+              <input id="fixedDay" type="number" min="1" max="31" placeholder="Ej: 5"/>
             </label>
-
-            <button id="btnAddFixed" class="btn" type="button">+ Guardar fijo</button>
+            <button id="btnAddFixed" class="btn" type="button">+ Agregar fijo</button>
           </div>
 
-          <details class="mt">
-            <summary class="muted tiny">Ver lista de fijos</summary>
+          <details class="mt" open>
+            <summary class="muted tiny">Editar fijos</summary>
             <div class="table mt">
-              <div class="thead listHeadFixed">
-                <div>Nombre</div>
-                <div>Categoría</div>
+              <div class="thead listHeadFixedEdit">
+                <div>Fijo</div>
+                <div>Cat.</div>
                 <div>Día</div>
                 <div class="right">Monto</div>
                 <div></div>
@@ -367,7 +370,6 @@
             <h2>Salarios mensuales</h2>
             <button id="btnSaveMonthly" class="btn" type="button">Guardar</button>
           </div>
-
           <div id="monthlyGrid" class="monthGrid mt"></div>
           <div id="monthlyMsg" class="muted tiny mt"></div>
         </div>
@@ -394,6 +396,6 @@
   <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <script src="app.js"></script>
+  <script src="app.js?v=1.2.0"></script>
 </body>
 </html>

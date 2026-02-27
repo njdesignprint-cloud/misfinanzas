@@ -1,6 +1,4 @@
-/***********************
- * Helpers (anti-crash)
- ***********************/
+// v1.2.0
 const $ = (id) => document.getElementById(id);
 const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
 const setText = (el, txt) => el && (el.textContent = txt);
@@ -14,11 +12,8 @@ function parseNumber(v) {
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
 function escapeHtml(s){
   return String(s ?? "")
-    .replaceAll("&","&amp;")
-    .replaceAll("<","&lt;")
-    .replaceAll(">","&gt;")
-    .replaceAll('"',"&quot;")
-    .replaceAll("'","&#039;");
+    .replaceAll("&","&amp;").replaceAll("<","&lt;").replaceAll(">","&gt;")
+    .replaceAll('"',"&quot;").replaceAll("'","&#039;");
 }
 function toDateAtLocalMidnight(dateStr){
   const [y,m,d] = dateStr.split("-").map(Number);
@@ -30,16 +25,8 @@ function isoDateFromDate(d){
   const dd = String(d.getDate()).padStart(2,"0");
   return `${yyyy}-${mm}-${dd}`;
 }
-function startOfDay(d){
-  const x = new Date(d);
-  x.setHours(0,0,0,0);
-  return x;
-}
-function addDays(d, n){
-  const x = new Date(d);
-  x.setDate(x.getDate() + n);
-  return x;
-}
+function startOfDay(d){ const x = new Date(d); x.setHours(0,0,0,0); return x; }
+function addDays(d, n){ const x = new Date(d); x.setDate(x.getDate() + n); return x; }
 function addMonths(d, n){
   const x = new Date(d);
   const day = x.getDate();
@@ -49,33 +36,18 @@ function addMonths(d, n){
   return x;
 }
 function monthIndexFromDate(d){ return d.getMonth(); }
-function monthName(i){
-  return ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][i] || "";
-}
+function monthName(i){ return ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"][i] || ""; }
 function fmtShortDate(d){
   return new Intl.DateTimeFormat("es-US",{month:"short", day:"2-digit", year:"numeric"}).format(d);
 }
 
-/***********************
- * Categories (base)
- ***********************/
+/** Categorías base (Mercado fijo incluido) */
 const BASE_CATEGORIES = [
-  "Renta",
-  "Telefonos",
-  "Electricidad",
-  "Agua",
-  "Gas",
-  "Auto",
-  "Seguro Auto",
-  "Seguro Medico",
-  "Mercado",
-  "Colegio",
-  "Ayuda Familiar"
+  "Renta","Telefonos","Electricidad","Agua","Gas","Auto","Seguro Auto",
+  "Seguro Medico","Mercado","Colegio","Ayuda Familiar"
 ];
 
-/***********************
- * Donut colors
- ***********************/
+/** Donut colors */
 const DONUT_COLORS = [
   "#4aa3ff", "#38d488", "#ffcc00", "#ff7a7a", "#9b7bff",
   "#00d4ff", "#ff8a00", "#00ff95", "#ffd1dc", "#a0ff4a",
@@ -135,7 +107,6 @@ const els = {
   whoTitle: $("whoTitle"),
   btnBackProfiles: $("btnBackProfiles"),
 
-  // Tabs
   navPlan: $("navPlan"),
   navAdd: $("navAdd"),
   navDash: $("navDash"),
@@ -145,7 +116,6 @@ const els = {
   tabDash: $("tabDash"),
   tabSettings: $("tabSettings"),
 
-  // Segmented Add
   segIncome: $("segIncome"),
   segExpense: $("segExpense"),
   incomeForm: $("incomeForm"),
@@ -158,8 +128,12 @@ const els = {
   nextSave: $("nextSave"),
   saveCount: $("saveCount"),
   savePlan: $("savePlan"),
+  quickPayWrap: $("quickPayWrap"),
+  quickPayDate: $("quickPayDate"),
+  quickPayAmount: $("quickPayAmount"),
+  btnAddQuickPay: $("btnAddQuickPay"),
 
-  // Dashboard
+  // Dash
   yearSelect: $("yearSelect"),
   sumIncome: $("sumIncome"),
   sumExpense: $("sumExpense"),
@@ -176,41 +150,37 @@ const els = {
   payDayWrap: $("payDayWrap"),
   payDay: $("payDay"),
   btnAddCategory: $("btnAddCategory"),
-  btnApplyFixedYear: $("btnApplyFixedYear"),
-  btnAddFixed: $("btnAddFixed"),
 
-  // Export/Import/Reset
+  fixedName: $("fixedName"),
+  fixedCategory: $("fixedCategory"),
+  fixedAmount: $("fixedAmount"),
+  fixedDay: $("fixedDay"),
+  btnAddFixed: $("btnAddFixed"),
+  btnApplyFixedYear: $("btnApplyFixedYear"),
+  fixedRows: $("fixedRows"),
+
+  monthlyPanel: $("monthlyPanel"),
+  monthlyGrid: $("monthlyGrid"),
+  btnSaveMonthly: $("btnSaveMonthly"),
+  monthlyMsg: $("monthlyMsg"),
+
   btnExport: $("btnExport"),
   importFile: $("importFile"),
   btnResetYear: $("btnResetYear"),
 
-  // Income
+  // Add tab
   incomeDate: $("incomeDate"),
   incomeAmount: $("incomeAmount"),
   incomeNote: $("incomeNote"),
   btnAddIncome: $("btnAddIncome"),
   incomeRows: $("incomeRows"),
 
-  // Fixed
-  fixedName: $("fixedName"),
-  fixedCategory: $("fixedCategory"),
-  fixedAmount: $("fixedAmount"),
-  fixedDay: $("fixedDay"),
-  fixedRows: $("fixedRows"),
-
-  // Expense
   expDate: $("expDate"),
   expName: $("expName"),
   expCategory: $("expCategory"),
   expAmount: $("expAmount"),
   btnAddExpense: $("btnAddExpense"),
   expenseRows: $("expenseRows"),
-
-  // Monthly panel
-  monthlyPanel: $("monthlyPanel"),
-  monthlyGrid: $("monthlyGrid"),
-  btnSaveMonthly: $("btnSaveMonthly"),
-  monthlyMsg: $("monthlyMsg"),
 };
 
 /***********************
@@ -252,22 +222,14 @@ function show(view){
 /***********************
  * Tabs
  ***********************/
-let currentTab = "plan";
 function setActiveTab(tab){
-  currentTab = tab;
-
   const map = {
     plan: { btn: els.navPlan, pane: els.tabPlan },
     add: { btn: els.navAdd, pane: els.tabAdd },
-    dash: { btn: els.navDash, pane: els.tabDash },
-    settings: { btn: els.navSettings, pane: els.tabSettings },
+    dash:{ btn: els.navDash, pane: els.tabDash },
+    settings:{ btn: els.navSettings, pane: els.tabSettings },
   };
-
-  Object.values(map).forEach(x => {
-    if (x.btn) x.btn.classList.remove("active");
-    if (x.pane) x.pane.classList.add("hidden");
-  });
-
+  Object.values(map).forEach(x => { x.btn?.classList.remove("active"); x.pane?.classList.add("hidden"); });
   map[tab].btn?.classList.add("active");
   map[tab].pane?.classList.remove("hidden");
 }
@@ -278,11 +240,8 @@ function setActiveTab(tab){
 function fmtMoney(n){
   const c = meta?.currency || "USD";
   const v = Number.isFinite(n) ? n : 0;
-  try {
-    return v.toLocaleString(undefined, { style:"currency", currency: c });
-  } catch {
-    return `${c} ${v.toFixed(2)}`;
-  }
+  try { return v.toLocaleString(undefined, { style:"currency", currency:c }); }
+  catch { return `${c} ${v.toFixed(2)}`; }
 }
 
 /***********************
@@ -313,11 +272,9 @@ function buildCategorySelect(selectEl, value){
   if (!selectEl) return;
   const cats = getAllCategories();
   const addOpt = "__ADD__";
-
   selectEl.innerHTML =
     cats.map(c => `<option value="${escapeHtml(c)}">${escapeHtml(c)}</option>`).join("") +
     `<option value="${addOpt}">+ Agregar categoría…</option>`;
-
   if (value && cats.includes(value)) selectEl.value = value;
   else if (cats.length) selectEl.value = cats[0];
 }
@@ -338,7 +295,7 @@ async function addCategoryFlow(){
 }
 
 /***********************
- * Default profiles
+ * Defaults: profiles + seed fijos (una sola vez)
  ***********************/
 async function ensureDefaultProfiles(uid){
   const snap = await db.collection("users").doc(uid).collection("profiles").get();
@@ -351,6 +308,7 @@ async function ensureDefaultProfiles(uid){
     lastPayDate: "",
     payDay: 15,
     customCategories: [],
+    defaultsSeeded: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }, { merge:true });
@@ -362,14 +320,17 @@ async function ensureDefaultProfiles(uid){
     lastPayDate: "",
     payDay: 15,
     customCategories: [],
+    defaultsSeeded: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }, { merge:true });
 }
+
 async function listProfiles(uid){
   const snap = await db.collection("users").doc(uid).collection("profiles").get();
   return snap.docs.map(d => ({ id:d.id, ...d.data() }));
 }
+
 function profileCardHTML(p){
   const name = p.displayName || p.id;
   const cur = p.currency || "USD";
@@ -387,6 +348,7 @@ function profileCardHTML(p){
     </div>
   `;
 }
+
 async function refreshProfilesUI(){
   if (!currentUser) return;
   setText(els.profilesMsg, "Cargando perfiles…");
@@ -400,12 +362,14 @@ async function refreshProfilesUI(){
 
   setText(els.profilesMsg, "");
 }
+
 function slugifyName(name){
   const base = String(name||"perfil").trim().toLowerCase()
     .replace(/[^a-z0-9]+/g,"-")
     .replace(/(^-|-$)/g,"");
   return base || "perfil";
 }
+
 async function createProfile(){
   const name = (els.newProfileName.value || "").trim();
   if (!name) { setText(els.profilesMsg, "Escribe un nombre."); return; }
@@ -429,6 +393,7 @@ async function createProfile(){
     lastPayDate: "",
     payDay,
     customCategories: [],
+    defaultsSeeded: false,
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
   }, { merge:true });
@@ -437,6 +402,40 @@ async function createProfile(){
   els.newPayDay.value = "";
   setText(els.profilesMsg, "Perfil creado ✅");
   await refreshProfilesUI();
+}
+
+/** Siembra los fijos base SOLO 1 vez por perfil (no sobrescribe, solo agrega si faltan) */
+async function seedDefaultFixedOnce(){
+  if (!currentUser || !currentProfileId || !meta) return;
+  if (meta.defaultsSeeded) return;
+
+  const col = fixedCol(currentUser.uid, currentProfileId);
+  const snap = await col.get();
+  const existing = new Set(snap.docs.map(d => String(d.data()?.name || "").trim().toLowerCase()));
+
+  const batch = db.batch();
+  let added = 0;
+
+  for (const name of BASE_CATEGORIES) {
+    const key = name.trim().toLowerCase();
+    if (existing.has(key)) continue;
+
+    const ref = col.doc(); // nuevo doc
+    batch.set(ref, {
+      name,
+      category: name,
+      amount: 0,
+      day: 1,
+      isDefault: true,
+      createdAt: new Date().toISOString(),
+    }, { merge:true });
+    added++;
+  }
+
+  if (added > 0) await batch.commit();
+
+  meta.defaultsSeeded = true;
+  saveMetaDebounced();
 }
 
 /***********************
@@ -448,6 +447,7 @@ function stopListeners(){
   if (unsubFixed) unsubFixed();
   unsubIncome = unsubExpense = unsubFixed = null;
 }
+
 function startYearListeners(year){
   stopListeners();
   incomes = [];
@@ -460,27 +460,17 @@ function startYearListeners(year){
     .orderBy("dateTs")
     .startAt(start)
     .endBefore(end)
-    .onSnapshot((snap) => {
-      incomes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      renderAll();
-    });
+    .onSnapshot((snap) => { incomes = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderAll(); });
 
   unsubExpense = expensesCol(currentUser.uid, currentProfileId)
     .orderBy("dateTs")
     .startAt(start)
     .endBefore(end)
-    .onSnapshot((snap) => {
-      expenses = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      renderAll();
-    });
+    .onSnapshot((snap) => { expenses = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderAll(); });
 
   unsubFixed = fixedCol(currentUser.uid, currentProfileId)
     .orderBy("name")
-    .onSnapshot((snap) => {
-      fixedTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      renderFixedList();
-      renderSavePlan();
-    });
+    .onSnapshot((snap) => { fixedTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderFixedList(); renderSavePlan(); });
 }
 
 /***********************
@@ -493,14 +483,11 @@ function ensureCharts(){
   if (!lineChart) {
     lineChart = new Chart(els.lineChart, {
       type: "line",
-      data: {
-        labels: months,
-        datasets: [
-          { label: "Ingresos", data: new Array(12).fill(0), tension: 0.25 },
-          { label: "Gastos", data: new Array(12).fill(0), tension: 0.25 },
-          { label: "Libre", data: new Array(12).fill(0), tension: 0.25 },
-        ]
-      },
+      data: { labels: months, datasets: [
+        { label: "Ingresos", data: new Array(12).fill(0), tension: 0.25 },
+        { label: "Gastos", data: new Array(12).fill(0), tension: 0.25 },
+        { label: "Libre", data: new Array(12).fill(0), tension: 0.25 },
+      ]},
       options: {
         responsive: true,
         plugins: { legend: { labels: { color: "#eaf0ff" } } },
@@ -520,6 +507,7 @@ function ensureCharts(){
     });
   }
 }
+
 function updateCharts(){
   ensureCharts();
   if (!lineChart || !donutChart) return;
@@ -538,7 +526,7 @@ function updateCharts(){
 
   lineChart.data.datasets[0].data = byMonthIncome;
   lineChart.data.datasets[1].data = byMonthExpense;
-  lineChart.data.datasets[2].data = byMonthIncome.map((v,i)=>v-byMonthExpense[i]);
+  lineChart.data.datasets[2].data = byMonthIncome.map((v,i)=>v - byMonthExpense[i]);
   lineChart.update();
 
   const catMap = new Map();
@@ -566,16 +554,11 @@ function renderDashboard(){
   setText(els.sumIncome, fmtMoney(sumInc));
   setText(els.sumExpense, fmtMoney(sumExp));
   setText(els.sumNet, fmtMoney(net));
-  if (els.sumNet) els.sumNet.className = "strong " + (net >= 0 ? "ok" : "bad");
 }
 
 function renderIncomeList(){
   els.incomeRows.innerHTML = "";
-  const sorted = [...incomes].sort((a,b)=>{
-    const ad = a.dateTs?.toMillis?.() ?? 0;
-    const bd = b.dateTs?.toMillis?.() ?? 0;
-    return bd - ad;
-  });
+  const sorted = [...incomes].sort((a,b)=>(b.dateTs?.toMillis?.()||0)-(a.dateTs?.toMillis?.()||0));
 
   for (const it of sorted) {
     const d = it.dateTs?.toDate ? it.dateTs.toDate() : toDateAtLocalMidnight(it.dateStr);
@@ -596,11 +579,7 @@ function renderIncomeList(){
 
 function renderExpenseList(){
   els.expenseRows.innerHTML = "";
-  const sorted = [...expenses].sort((a,b)=>{
-    const ad = a.dateTs?.toMillis?.() ?? 0;
-    const bd = b.dateTs?.toMillis?.() ?? 0;
-    return bd - ad;
-  });
+  const sorted = [...expenses].sort((a,b)=>(b.dateTs?.toMillis?.()||0)-(a.dateTs?.toMillis?.()||0));
 
   for (const it of sorted) {
     const d = it.dateTs?.toDate ? it.dateTs.toDate() : toDateAtLocalMidnight(it.dateStr);
@@ -620,34 +599,80 @@ function renderExpenseList(){
   }
 }
 
+/** Lista editable de fijos */
+let fixedSaveTimer = new Map();
+function saveFixedDebounced(docId, patch){
+  const key = docId;
+  clearTimeout(fixedSaveTimer.get(key));
+  fixedSaveTimer.set(key, setTimeout(async () => {
+    await fixedCol(currentUser.uid, currentProfileId).doc(docId).set(patch, { merge:true });
+  }, 250));
+}
+
 function renderFixedList(){
   els.fixedRows.innerHTML = "";
   const sorted = [...fixedTemplates].sort((a,b)=>String(a.name||"").localeCompare(String(b.name||"")));
 
   for (const it of sorted) {
     const row = document.createElement("div");
-    row.className = "trow listRowFixed";
+    row.className = "trow listRowFixedEdit";
+
+    const cats = getAllCategories();
+    const catOptions = cats.map(c => `<option value="${escapeHtml(c)}" ${c===it.category?"selected":""}>${escapeHtml(c)}</option>`).join("")
+      + `<option value="__ADD__">+ Agregar…</option>`;
+
     row.innerHTML = `
-      <div>${escapeHtml(it.name || "")}</div>
-      <div class="muted">${escapeHtml(it.category || "Sin categoría")}</div>
-      <div>${Number(it.day || 1)}</div>
-      <div class="right strong">${fmtMoney(Number(it.amount||0))}</div>
+      <div class="strong">${escapeHtml(it.name || "")}</div>
+      <div><select class="cat">${catOptions}</select></div>
+      <div><input class="day" type="number" min="1" max="31" value="${Number(it.day||1)}"/></div>
+      <div><input class="amt right" inputmode="decimal" value="${String(it.amount ?? "")}"/></div>
       <button class="btn danger ghost del" type="button">✕</button>
     `;
-    on(row.querySelector(".del"), "click", async () => {
+
+    const catEl = row.querySelector(".cat");
+    const dayEl = row.querySelector(".day");
+    const amtEl = row.querySelector(".amt");
+    const delEl = row.querySelector(".del");
+
+    on(catEl, "change", async () => {
+      if (catEl.value === "__ADD__") {
+        await addCategoryFlow();
+        renderFixedList();
+        return;
+      }
+      saveFixedDebounced(it.id, { category: catEl.value });
+      renderSavePlan();
+    });
+
+    on(dayEl, "input", () => {
+      const v = clamp(Number(dayEl.value||1),1,31);
+      saveFixedDebounced(it.id, { day: v });
+      renderSavePlan();
+    });
+
+    on(amtEl, "input", () => {
+      // guardamos como número
+      const v = parseNumber(amtEl.value);
+      saveFixedDebounced(it.id, { amount: v });
+      renderSavePlan();
+    });
+
+    on(delEl, "click", async () => {
       await fixedCol(currentUser.uid, currentProfileId).doc(it.id).delete();
     });
+
     els.fixedRows.appendChild(row);
   }
 }
 
 /***********************
- * Monthly salary panel (solo si monthly)
+ * Monthly salary panel (solo monthly)
  ***********************/
 function renderMonthlyPanel(){
   const isMonthly = (meta?.payFrequency === "monthly");
   toggleHidden(els.monthlyPanel, !isMonthly);
   toggleHidden(els.payDayWrap, !isMonthly);
+  toggleHidden(els.quickPayWrap, isMonthly); // no quick pay en mensual
 
   if (!isMonthly) return;
 
@@ -671,41 +696,30 @@ function renderMonthlyPanel(){
 }
 
 /***********************
- * ✅ PLAN SEMANAL/QUINCENAL/MENSUAL (SOLO MES ACTUAL)
- * Usa:
- * - Gastos fijos (plantillas)
- * - Fechas de cobro del usuario (según semanal/quincenal/mensual)
- * - Y usa ingresos metidos para detectar el último cobro real
+ * Plan semanal/quincenal/mensual (SOLO MES ACTUAL)
  ***********************/
 function getLatestIncomeDateUpToToday(){
   const today = startOfDay(new Date());
   let best = null;
-
   for (const it of incomes) {
     const d = it.dateTs?.toDate ? startOfDay(it.dateTs.toDate()) : startOfDay(toDateAtLocalMidnight(it.dateStr));
-    if (d <= today) {
-      if (!best || d > best) best = d;
-    }
+    if (d <= today) if (!best || d > best) best = d;
   }
   return best;
 }
 
 function getEffectiveLastPayDate(){
   const today = startOfDay(new Date());
-
   let metaDate = null;
   if (meta?.lastPayDate) {
     const d = startOfDay(new Date(meta.lastPayDate));
     if (!Number.isNaN(d.getTime())) metaDate = d;
   }
-
   const incomeDate = getLatestIncomeDateUpToToday();
   const candidates = [metaDate, incomeDate].filter(Boolean);
   if (!candidates.length) return null;
-
   let best = candidates[0];
   for (const c of candidates) if (c > best) best = c;
-
   if (best > today) return best;
   return best;
 }
@@ -746,7 +760,6 @@ function fixedAlreadyPaidThisMonth(templateId, monthStart, monthEnd){
   return expenses.some(e => {
     if (e.source !== "fixedTemplate") return false;
     if (e.templateId !== templateId) return false;
-
     const dt = e.dateTs?.toDate ? startOfDay(e.dateTs.toDate()) : startOfDay(toDateAtLocalMidnight(e.dateStr));
     return dt >= monthStart && dt <= monthEnd;
   });
@@ -755,18 +768,12 @@ function fixedAlreadyPaidThisMonth(templateId, monthStart, monthEnd){
 function getPayDatesUntilMonthEnd(nextPay, monthEnd){
   const freq = meta?.payFrequency || "biweekly";
   if (!nextPay) return [];
-
-  if (freq === "monthly") {
-    return nextPay <= monthEnd ? [startOfDay(nextPay)] : [];
-  }
+  if (freq === "monthly") return nextPay <= monthEnd ? [startOfDay(nextPay)] : [];
 
   const step = (freq === "weekly") ? 7 : 14;
   const out = [];
   let d = startOfDay(nextPay);
-  while (d <= monthEnd) {
-    out.push(d);
-    d = startOfDay(addDays(d, step));
-  }
+  while (d <= monthEnd) { out.push(d); d = startOfDay(addDays(d, step)); }
   return out;
 }
 
@@ -777,6 +784,10 @@ function renderSavePlan(){
   const nextPay = getNextPayDate();
   if (els.nextPayDate) els.nextPayDate.value = nextPay ? fmtShortDate(nextPay) : "";
 
+  // Quick pay visible solo para semanal/quincenal
+  const isMonthly = meta.payFrequency === "monthly";
+  toggleHidden(els.quickPayWrap, isMonthly);
+
   const { start: mStart, end: mEnd, label: monthLabel } = monthBoundsForToday();
   const payDates = nextPay ? getPayDatesUntilMonthEnd(nextPay, mEnd) : [];
   setText(els.saveCount, String(payDates.length));
@@ -784,7 +795,7 @@ function renderSavePlan(){
   if (!nextPay) {
     setText(els.urgentSave, fmtMoney(0));
     setText(els.nextSave, fmtMoney(0));
-    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Configura tu cobro o agrega ingresos.</span><span class="muted">—</span></div>`;
+    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Agrega un cobro (fecha+monto) o define “Último cobro”.</span><span class="muted">—</span></div>`;
     return;
   }
 
@@ -796,6 +807,7 @@ function renderSavePlan(){
     const amount = Number(t.amount || 0);
     if (amount <= 0) continue;
 
+    // no contamos si ya lo aplicaste como gasto fijo del año (para no duplicar)
     if (fixedAlreadyPaidThisMonth(t.id, mStart, mEnd)) continue;
 
     const day = clamp(Number(t.day || 1), 1, 31);
@@ -823,7 +835,7 @@ function renderSavePlan(){
 
   els.savePlan.innerHTML =
     `<div class="planRow">
-      <span class="muted">Mes planificado (solo fijos)</span>
+      <span class="muted">Mes planificado</span>
       <span class="strong">${escapeHtml(monthLabel)}</span>
     </div>` +
     (payDates.length
@@ -853,11 +865,7 @@ function saveMetaDebounced(){
 /***********************
  * Actions
  ***********************/
-async function addIncome(){
-  const dateStr = els.incomeDate.value;
-  const amount = parseNumber(els.incomeAmount.value);
-  const note = (els.incomeNote.value || "").trim();
-
+async function addIncome(dateStr, amount, note){
   if (!dateStr) return alert("Pon la fecha del ingreso.");
   if (amount <= 0) return alert("Pon un monto válido.");
 
@@ -866,12 +874,9 @@ async function addIncome(){
     dateStr,
     dateTs: TS.fromDate(dt),
     amount,
-    note,
+    note: note || "",
     createdAt: new Date().toISOString(),
   });
-
-  els.incomeAmount.value = "";
-  els.incomeNote.value = "";
 }
 
 async function addExpense(){
@@ -909,6 +914,7 @@ async function addFixedTemplate(){
 
   await fixedCol(currentUser.uid, currentProfileId).add({
     name, category, amount, day,
+    isDefault: false,
     createdAt: new Date().toISOString(),
   });
 
@@ -921,6 +927,9 @@ async function applyFixedToYear(){
   if (!confirm(`Esto creará/actualizará gastos fijos para ${year}. ¿Continuar?`)) return;
 
   for (const t of fixedTemplates) {
+    const amount = Number(t.amount || 0);
+    if (amount <= 0) continue;
+
     const day = clamp(Number(t.day || 1), 1, 31);
     for (let m=1; m<=12; m++) {
       const id = `fx-${t.id}-${year}-${String(m).padStart(2,"0")}`;
@@ -980,17 +989,12 @@ async function saveMonthlySalaries(){
   setText(els.monthlyMsg, `Guardado ✅ (${saved} meses).`);
 }
 
+/***********************
+ * Export/Import/Reset
+ ***********************/
 async function exportAll(){
   const year = Number(els.yearSelect.value || nowYear());
-  const payload = {
-    exportedAt: new Date().toISOString(),
-    profileId: currentProfileId,
-    meta,
-    year,
-    incomes,
-    expenses,
-    fixedTemplates
-  };
+  const payload = { exportedAt: new Date().toISOString(), profileId: currentProfileId, meta, year, incomes, expenses, fixedTemplates };
   const blob = new Blob([JSON.stringify(payload, null, 2)], { type:"application/json" });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
@@ -1002,29 +1006,16 @@ async function exportAll(){
   URL.revokeObjectURL(url);
 }
 
-async function importAll(file){
-  const txt = await file.text();
-  const data = JSON.parse(txt);
-  if (!data?.meta || !data?.year) return alert("Archivo inválido.");
-
-  meta = { ...meta, ...data.meta };
-  await profileRef(currentUser.uid, currentProfileId).set(meta, { merge:true });
-
-  alert("Importado ✅ (meta).");
-}
-
 async function resetYear(){
   const year = Number(els.yearSelect.value || nowYear());
   if (!confirm(`Esto borrará TODOS los ingresos y gastos del año ${year}. ¿Continuar?`)) return;
 
   const { start, end } = yearRangeTs(year);
 
-  const incSnap = await incomesCol(currentUser.uid, currentProfileId)
-    .orderBy("dateTs").startAt(start).endBefore(end).get();
+  const incSnap = await incomesCol(currentUser.uid, currentProfileId).orderBy("dateTs").startAt(start).endBefore(end).get();
   for (const d of incSnap.docs) await d.ref.delete();
 
-  const expSnap = await expensesCol(currentUser.uid, currentProfileId)
-    .orderBy("dateTs").startAt(start).endBefore(end).get();
+  const expSnap = await expensesCol(currentUser.uid, currentProfileId).orderBy("dateTs").startAt(start).endBefore(end).get();
   for (const d of expSnap.docs) await d.ref.delete();
 
   alert("Año reseteado ✅");
@@ -1065,10 +1056,10 @@ async function openProfile(profileId){
   meta.lastPayDate = meta.lastPayDate || "";
   meta.payDay = clamp(Number(meta.payDay || 15), 1, 31);
   meta.customCategories = Array.isArray(meta.customCategories) ? meta.customCategories : [];
+  meta.defaultsSeeded = !!meta.defaultsSeeded;
 
   setText(els.whoTitle, meta.displayName);
 
-  // settings inputs
   els.profileName.value = meta.displayName;
   els.currency.value = meta.currency;
   els.payFrequency.value = meta.payFrequency;
@@ -1077,56 +1068,22 @@ async function openProfile(profileId){
   toggleHidden(els.payDayWrap, meta.payFrequency !== "monthly");
 
   buildYearSelect();
-
   buildCategorySelect(els.fixedCategory, BASE_CATEGORIES[0]);
   buildCategorySelect(els.expCategory, BASE_CATEGORIES[0]);
+
+  // Plan quick pay defaults
+  if (els.quickPayDate) els.quickPayDate.value = isoDateFromDate(new Date());
 
   show("app");
   setText(els.cloudMsg, "Listo ✅");
 
   startYearListeners(Number(els.yearSelect.value || nowYear()));
-  renderFixedList();
+
+  // Seed defaults once (no borra nada)
+  await seedDefaultFixedOnce();
+
   renderAll();
-
   setActiveTab("plan");
-}
-
-/***********************
- * Realtime listeners
- ***********************/
-function startYearListeners(year){
-  stopListeners();
-  incomes = [];
-  expenses = [];
-  fixedTemplates = [];
-
-  const { start, end } = yearRangeTs(year);
-
-  unsubIncome = incomesCol(currentUser.uid, currentProfileId)
-    .orderBy("dateTs")
-    .startAt(start)
-    .endBefore(end)
-    .onSnapshot((snap) => {
-      incomes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      renderAll();
-    });
-
-  unsubExpense = expensesCol(currentUser.uid, currentProfileId)
-    .orderBy("dateTs")
-    .startAt(start)
-    .endBefore(end)
-    .onSnapshot((snap) => {
-      expenses = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      renderAll();
-    });
-
-  unsubFixed = fixedCol(currentUser.uid, currentProfileId)
-    .orderBy("name")
-    .onSnapshot((snap) => {
-      fixedTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() }));
-      renderFixedList();
-      renderSavePlan();
-    });
 }
 
 /***********************
@@ -1161,51 +1118,33 @@ on(els.btnLogin,"click", async ()=>{
 on(els.btnLogout,"click", async ()=> auth.signOut());
 
 on(els.btnRefreshProfiles,"click", ()=> refreshProfilesUI());
-on(els.newPayFrequency,"change", ()=>{
-  toggleHidden(els.newPayDayWrap, els.newPayFrequency.value !== "monthly");
-});
+on(els.newPayFrequency,"change", ()=> toggleHidden(els.newPayDayWrap, els.newPayFrequency.value !== "monthly"));
 on(els.btnCreateProfile,"click", ()=> createProfile());
 
-on(els.btnBackProfiles,"click", ()=>{
-  stopListeners();
-  show("profiles");
-});
+on(els.btnBackProfiles,"click", ()=> { stopListeners(); show("profiles"); });
 
-// Tabs
-on(els.navPlan, "click", ()=> setActiveTab("plan"));
-on(els.navAdd, "click", ()=> setActiveTab("add"));
-on(els.navDash, "click", ()=> setActiveTab("dash"));
-on(els.navSettings, "click", ()=> setActiveTab("settings"));
+on(els.navPlan,"click", ()=> setActiveTab("plan"));
+on(els.navAdd,"click", ()=> setActiveTab("add"));
+on(els.navDash,"click", ()=> setActiveTab("dash"));
+on(els.navSettings,"click", ()=> setActiveTab("settings"));
 
-// Segmented add
-on(els.segIncome, "click", ()=>{
+on(els.segIncome,"click", ()=>{
   els.segIncome.classList.add("active");
   els.segExpense.classList.remove("active");
-  toggleHidden(els.incomeForm, false);
-  toggleHidden(els.expenseForm, true);
+  toggleHidden(els.incomeForm,false);
+  toggleHidden(els.expenseForm,true);
 });
-on(els.segExpense, "click", ()=>{
+on(els.segExpense,"click", ()=>{
   els.segExpense.classList.add("active");
   els.segIncome.classList.remove("active");
-  toggleHidden(els.expenseForm, false);
-  toggleHidden(els.incomeForm, true);
+  toggleHidden(els.expenseForm,false);
+  toggleHidden(els.incomeForm,true);
 });
 
-on(els.yearSelect,"change", ()=>{
-  startYearListeners(Number(els.yearSelect.value || nowYear()));
-});
+on(els.yearSelect,"change", ()=> startYearListeners(Number(els.yearSelect.value || nowYear())));
 
-on(els.profileName,"input", ()=>{
-  meta.displayName = (els.profileName.value || "").trim() || meta.displayName;
-  setText(els.whoTitle, meta.displayName);
-  saveMetaDebounced();
-});
-
-on(els.currency,"change", ()=>{
-  meta.currency = els.currency.value || "USD";
-  saveMetaDebounced();
-  renderAll();
-});
+on(els.profileName,"input", ()=>{ meta.displayName=(els.profileName.value||"").trim()||meta.displayName; setText(els.whoTitle, meta.displayName); saveMetaDebounced(); });
+on(els.currency,"change", ()=>{ meta.currency=els.currency.value||"USD"; saveMetaDebounced(); renderAll(); });
 
 on(els.payFrequency,"change", ()=>{
   meta.payFrequency = els.payFrequency.value || "biweekly";
@@ -1215,42 +1154,38 @@ on(els.payFrequency,"change", ()=>{
   renderSavePlan();
 });
 
-on(els.lastPayDate,"change", ()=>{
-  meta.lastPayDate = els.lastPayDate.value || "";
-  saveMetaDebounced();
-  renderSavePlan();
-});
+on(els.lastPayDate,"change", ()=>{ meta.lastPayDate=els.lastPayDate.value||""; saveMetaDebounced(); renderSavePlan(); });
+on(els.payDay,"input", ()=>{ meta.payDay=clamp(Number(els.payDay.value||15),1,31); saveMetaDebounced(); renderMonthlyPanel(); renderSavePlan(); });
 
-on(els.payDay,"input", ()=>{
-  meta.payDay = clamp(Number(els.payDay.value || 15), 1, 31);
-  saveMetaDebounced();
-  renderMonthlyPanel();
-  renderSavePlan();
-});
+on(els.btnAddCategory,"click", ()=> addCategoryFlow());
+on(els.fixedCategory,"change", async ()=> { if (els.fixedCategory.value==="__ADD__") await addCategoryFlow(); });
+on(els.expCategory,"change", async ()=> { if (els.expCategory.value==="__ADD__") await addCategoryFlow(); });
 
 on(els.btnRecalcSave,"click", ()=> renderSavePlan());
-on(els.btnAddCategory,"click", ()=> addCategoryFlow());
 
-on(els.fixedCategory, "change", ()=>{
-  if (els.fixedCategory.value === "__ADD__") addCategoryFlow();
-});
-on(els.expCategory, "change", ()=>{
-  if (els.expCategory.value === "__ADD__") addCategoryFlow();
+on(els.btnAddIncome,"click", async ()=>{
+  const dateStr = els.incomeDate.value;
+  const amount = parseNumber(els.incomeAmount.value);
+  const note = (els.incomeNote.value||"").trim();
+  await addIncome(dateStr, amount, note);
+  els.incomeAmount.value = "";
+  els.incomeNote.value = "";
 });
 
-on(els.btnAddIncome,"click", ()=> addIncome());
+on(els.btnAddQuickPay,"click", async ()=>{
+  const dateStr = els.quickPayDate.value;
+  const amount = parseNumber(els.quickPayAmount.value);
+  await addIncome(dateStr, amount, "Cobro");
+  els.quickPayAmount.value = "";
+  setActiveTab("plan");
+});
+
 on(els.btnAddExpense,"click", ()=> addExpense());
 on(els.btnAddFixed,"click", ()=> addFixedTemplate());
 on(els.btnApplyFixedYear,"click", ()=> applyFixedToYear());
 on(els.btnSaveMonthly,"click", ()=> saveMonthlySalaries());
 
 on(els.btnExport,"click", ()=> exportAll());
-on(els.importFile,"change", async (e)=>{
-  const f = e.target.files?.[0];
-  if (!f) return;
-  try { await importAll(f); } catch { alert("No pude importar."); }
-  e.target.value = "";
-});
 on(els.btnResetYear,"click", ()=> resetYear());
 
 /***********************
