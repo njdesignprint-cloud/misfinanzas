@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Mis Finanzas</title>
-  <link rel="stylesheet" href="styles.css?v=1.2.1"/>
+  <link rel="stylesheet" href="styles.css?v=1.2.2"/>
 </head>
 <body>
   <div class="wrap">
@@ -123,7 +123,6 @@
             <button id="btnRecalcSave" class="btn ghost" type="button">Actualizar</button>
           </div>
 
-          <!-- Quick paycheck (solo semanal/quincenal) -->
           <div id="quickPayWrap" class="stack mt hidden">
             <div class="muted tiny">Cobro (Semanal/Quincenal)</div>
             <label class="field">
@@ -190,7 +189,6 @@
             <button id="btnAddIncome" class="btn" type="button">+ Guardar ingreso</button>
           </div>
 
-          <!-- ✅ GASTO: nombre ya NO es obligatorio -->
           <div id="expenseForm" class="stack mt hidden">
             <label class="field">
               <span>Fecha</span>
@@ -211,7 +209,7 @@
               <summary class="muted tiny">Detalles (opcional)</summary>
               <label class="field mt">
                 <span>Nombre / Nota (opcional)</span>
-                <input id="expName" placeholder="Ej: Walmart, Costco, Gasolina..."/>
+                <input id="expName" placeholder="Ej: Walmart, Costco..."/>
               </label>
             </details>
 
@@ -332,6 +330,7 @@
           </div>
         </div>
 
+        <!-- ✅ FIJOS: nombre opcional -->
         <div class="subcard mt">
           <div class="rowBetween">
             <h2>Gastos fijos</h2>
@@ -340,21 +339,28 @@
 
           <div class="stack mt">
             <label class="field">
-              <span>Nombre</span>
-              <input id="fixedName" placeholder="Ej: Internet"/>
-            </label>
-            <label class="field">
               <span>Categoría</span>
               <select id="fixedCategory"></select>
             </label>
+
             <label class="field">
               <span>Monto</span>
-              <input id="fixedAmount" inputmode="decimal" placeholder="Ej: 80"/>
+              <input id="fixedAmount" inputmode="decimal" placeholder="Ej: 1800"/>
             </label>
+
             <label class="field">
               <span>Día del mes (1-31)</span>
-              <input id="fixedDay" type="number" min="1" max="31" placeholder="Ej: 5"/>
+              <input id="fixedDay" type="number" min="1" max="31" placeholder="Ej: 1"/>
             </label>
+
+            <details class="mt">
+              <summary class="muted tiny">Detalles (opcional)</summary>
+              <label class="field mt">
+                <span>Nombre / Nota (opcional)</span>
+                <input id="fixedName" placeholder="Ej: Renta casa / Internet negocio"/>
+              </label>
+            </details>
+
             <button id="btnAddFixed" class="btn" type="button">+ Agregar fijo</button>
           </div>
 
@@ -396,14 +402,12 @@
     </section>
   </div>
 
-  <!-- Firebase CDN -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 
-  <!-- Chart.js -->
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-  <script src="app.js?v=1.2.1"></script>
+  <script src="app.js?v=1.2.2"></script>
 </body>
 </html>

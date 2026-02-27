@@ -1,4 +1,4 @@
-// v1.2.1
+// v1.2.2
 const $ = (id) => document.getElementById(id);
 const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
 const setText = (el, txt) => el && (el.textContent = txt);
@@ -41,22 +41,17 @@ function fmtShortDate(d){
   return new Intl.DateTimeFormat("es-US",{month:"short", day:"2-digit", year:"numeric"}).format(d);
 }
 
-/** Categorías base (Mercado fijo incluido) */
 const BASE_CATEGORIES = [
   "Renta","Telefonos","Electricidad","Agua","Gas","Auto","Seguro Auto",
   "Seguro Medico","Mercado","Colegio","Ayuda Familiar"
 ];
 
-/** Donut colors */
 const DONUT_COLORS = [
   "#4aa3ff", "#38d488", "#ffcc00", "#ff7a7a", "#9b7bff",
   "#00d4ff", "#ff8a00", "#00ff95", "#ffd1dc", "#a0ff4a",
   "#ff4aa3", "#4afff3"
 ];
 
-/***********************
- * Firebase
- ***********************/
 const firebaseConfig = {
   apiKey: "AIzaSyATpb8_S2JhY1T2Lb8lzn3_544C7Kqd4OI",
   authDomain: "misfinanzas-618f2.firebaseapp.com",
@@ -78,9 +73,6 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 const TS = firebase.firestore.Timestamp;
 
-/***********************
- * Elements
- ***********************/
 const els = {
   authView: $("authView"),
   profileView: $("profileView"),
@@ -121,7 +113,6 @@ const els = {
   incomeForm: $("incomeForm"),
   expenseForm: $("expenseForm"),
 
-  // Plan
   btnRecalcSave: $("btnRecalcSave"),
   nextPayDate: $("nextPayDate"),
   urgentSave: $("urgentSave"),
@@ -133,7 +124,6 @@ const els = {
   quickPayAmount: $("quickPayAmount"),
   btnAddQuickPay: $("btnAddQuickPay"),
 
-  // Dash
   yearSelect: $("yearSelect"),
   sumIncome: $("sumIncome"),
   sumExpense: $("sumExpense"),
@@ -141,7 +131,6 @@ const els = {
   lineChart: $("lineChart"),
   donutChart: $("donutChart"),
 
-  // Settings
   cloudMsg: $("cloudMsg"),
   profileName: $("profileName"),
   currency: $("currency"),
@@ -151,6 +140,7 @@ const els = {
   payDay: $("payDay"),
   btnAddCategory: $("btnAddCategory"),
 
+  // ✅ FIXED: name opcional (details)
   fixedName: $("fixedName"),
   fixedCategory: $("fixedCategory"),
   fixedAmount: $("fixedAmount"),
@@ -168,7 +158,6 @@ const els = {
   importFile: $("importFile"),
   btnResetYear: $("btnResetYear"),
 
-  // Add tab
   incomeDate: $("incomeDate"),
   incomeAmount: $("incomeAmount"),
   incomeNote: $("incomeNote"),
@@ -178,14 +167,11 @@ const els = {
   expDate: $("expDate"),
   expCategory: $("expCategory"),
   expAmount: $("expAmount"),
-  expName: $("expName"), // opcional
+  expName: $("expName"),
   btnAddExpense: $("btnAddExpense"),
   expenseRows: $("expenseRows"),
 };
 
-/***********************
- * State
- ***********************/
 let currentUser = null;
 let currentProfileId = null;
 let meta = null;
@@ -201,17 +187,11 @@ let unsubFixed = null;
 let lineChart = null;
 let donutChart = null;
 
-/***********************
- * Firestore paths
- ***********************/
 function profileRef(uid, pid){ return db.collection("users").doc(uid).collection("profiles").doc(pid); }
 function incomesCol(uid, pid){ return profileRef(uid,pid).collection("incomes"); }
 function expensesCol(uid, pid){ return profileRef(uid,pid).collection("expenses"); }
 function fixedCol(uid, pid){ return profileRef(uid,pid).collection("fixed"); }
 
-/***********************
- * View
- ***********************/
 function show(view){
   toggleHidden(els.authView, view !== "auth");
   toggleHidden(els.profileView, view !== "profiles");
@@ -219,9 +199,6 @@ function show(view){
   toggleHidden(els.btnLogout, view === "auth");
 }
 
-/***********************
- * Tabs
- ***********************/
 function setActiveTab(tab){
   const map = {
     plan: { btn: els.navPlan, pane: els.tabPlan },
@@ -234,9 +211,6 @@ function setActiveTab(tab){
   map[tab].pane?.classList.remove("hidden");
 }
 
-/***********************
- * Money
- ***********************/
 function fmtMoney(n){
   const c = meta?.currency || "USD";
   const v = Number.isFinite(n) ? n : 0;
@@ -244,9 +218,6 @@ function fmtMoney(n){
   catch { return `${c} ${v.toFixed(2)}`; }
 }
 
-/***********************
- * Year
- ***********************/
 function nowYear(){ return new Date().getFullYear(); }
 function buildYearSelect(){
   const y = nowYear();
@@ -260,9 +231,6 @@ function yearRangeTs(year){
   return { start: TS.fromDate(start), end: TS.fromDate(end) };
 }
 
-/***********************
- * Categories per profile
- ***********************/
 function getAllCategories(){
   const custom = Array.isArray(meta?.customCategories) ? meta.customCategories : [];
   const set = new Set([...BASE_CATEGORIES, ...custom].map(x => String(x).trim()).filter(Boolean));
@@ -294,9 +262,6 @@ async function addCategoryFlow(){
   buildCategorySelect(els.expCategory, els.expCategory.value);
 }
 
-/***********************
- * Defaults: profiles + seed fijos (una sola vez)
- ***********************/
 async function ensureDefaultProfiles(uid){
   const snap = await db.collection("users").doc(uid).collection("profiles").get();
   if (!snap.empty) return;
@@ -404,7 +369,6 @@ async function createProfile(){
   await refreshProfilesUI();
 }
 
-/** Siembra los fijos base SOLO 1 vez por perfil (no sobrescribe, solo agrega si faltan) */
 async function seedDefaultFixedOnce(){
   if (!currentUser || !currentProfileId || !meta) return;
   if (meta.defaultsSeeded) return;
@@ -438,9 +402,6 @@ async function seedDefaultFixedOnce(){
   saveMetaDebounced();
 }
 
-/***********************
- * Realtime listeners
- ***********************/
 function stopListeners(){
   if (unsubIncome) unsubIncome();
   if (unsubExpense) unsubExpense();
@@ -457,15 +418,11 @@ function startYearListeners(year){
   const { start, end } = yearRangeTs(year);
 
   unsubIncome = incomesCol(currentUser.uid, currentProfileId)
-    .orderBy("dateTs")
-    .startAt(start)
-    .endBefore(end)
+    .orderBy("dateTs").startAt(start).endBefore(end)
     .onSnapshot((snap) => { incomes = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderAll(); });
 
   unsubExpense = expensesCol(currentUser.uid, currentProfileId)
-    .orderBy("dateTs")
-    .startAt(start)
-    .endBefore(end)
+    .orderBy("dateTs").startAt(start).endBefore(end)
     .onSnapshot((snap) => { expenses = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderAll(); });
 
   unsubFixed = fixedCol(currentUser.uid, currentProfileId)
@@ -473,9 +430,6 @@ function startYearListeners(year){
     .onSnapshot((snap) => { fixedTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() })); renderFixedList(); renderSavePlan(); });
 }
 
-/***********************
- * Charts
- ***********************/
 function ensureCharts(){
   if (!els.lineChart || !els.donutChart) return;
   const months = Array.from({length:12}, (_,i)=>monthName(i));
@@ -543,9 +497,6 @@ function updateCharts(){
   donutChart.update();
 }
 
-/***********************
- * Render lists + dashboard
- ***********************/
 function renderDashboard(){
   const sumInc = incomes.reduce((a,b)=>a + Number(b.amount||0), 0);
   const sumExp = expenses.reduce((a,b)=>a + Number(b.amount||0), 0);
@@ -599,7 +550,6 @@ function renderExpenseList(){
   }
 }
 
-/** Lista editable de fijos */
 let fixedSaveTimer = new Map();
 function saveFixedDebounced(docId, patch){
   const key = docId;
@@ -660,39 +610,13 @@ function renderFixedList(){
   }
 }
 
-/***********************
- * Monthly salary panel (solo monthly)
- ***********************/
 function renderMonthlyPanel(){
   const isMonthly = (meta?.payFrequency === "monthly");
   toggleHidden(els.monthlyPanel, !isMonthly);
   toggleHidden(els.payDayWrap, !isMonthly);
   toggleHidden(els.quickPayWrap, isMonthly);
-
-  if (!isMonthly) return;
-
-  const year = Number(els.yearSelect.value || nowYear());
-  const payDay = clamp(Number(meta?.payDay || 15), 1, 31);
-
-  els.monthlyGrid.innerHTML = "";
-  for (let m=1; m<=12; m++){
-    const id = `m-${year}-${String(m).padStart(2,"0")}`;
-    const existing = incomes.find(x => x.id === id);
-    const val = existing?.amount ? String(existing.amount) : "";
-
-    const cell = document.createElement("div");
-    cell.className = "monthCell";
-    cell.innerHTML = `
-      <div class="mTitle">${monthName(m-1)} ${year} (día ${payDay})</div>
-      <input data-mid="${id}" inputmode="decimal" placeholder="Monto" value="${escapeHtml(val)}"/>
-    `;
-    els.monthlyGrid.appendChild(cell);
-  }
 }
 
-/***********************
- * Plan semanal/quincenal/mensual (SOLO MES ACTUAL)
- ***********************/
 function getLatestIncomeDateUpToToday(){
   const today = startOfDay(new Date());
   let best = null;
@@ -781,14 +705,14 @@ function renderSavePlan(){
   const isMonthly = meta.payFrequency === "monthly";
   toggleHidden(els.quickPayWrap, isMonthly);
 
-  const { start: mStart, end: mEnd, label: monthLabel } = monthBoundsForToday();
+  const { start: mStart, end: mEnd } = monthBoundsForToday();
   const payDates = nextPay ? getPayDatesUntilMonthEnd(nextPay, mEnd) : [];
   setText(els.saveCount, String(payDates.length));
 
   if (!nextPay) {
     setText(els.urgentSave, fmtMoney(0));
     setText(els.nextSave, fmtMoney(0));
-    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Agrega un cobro (fecha+monto) o define “Último cobro”.</span><span class="muted">—</span></div>`;
+    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Agrega un cobro o define “Último cobro”.</span><span class="muted">—</span></div>`;
     return;
   }
 
@@ -825,24 +749,14 @@ function renderSavePlan(){
   setText(els.urgentSave, fmtMoney(urgent));
   setText(els.nextSave, fmtMoney(planTotals[0]?.total || 0));
 
-  els.savePlan.innerHTML =
-    `<div class="planRow">
-      <span class="muted">Mes planificado</span>
-      <span class="strong">${escapeHtml(monthLabel)}</span>
-    </div>` +
-    (payDates.length
-      ? planTotals.map(p => `
-          <div class="planRow">
-            <span>${escapeHtml(fmtShortDate(p.date))}</span>
-            <span class="strong">${escapeHtml(fmtMoney(p.total))}</span>
-          </div>
-        `).join("")
-      : `<div class="planRow"><span class="muted">No quedan cobros este mes.</span><span class="muted">—</span></div>`);
+  els.savePlan.innerHTML = planTotals.map(p => `
+    <div class="planRow">
+      <span>${escapeHtml(fmtShortDate(p.date))}</span>
+      <span class="strong">${escapeHtml(fmtMoney(p.total))}</span>
+    </div>
+  `).join("");
 }
 
-/***********************
- * Meta save (debounced)
- ***********************/
 let saveMetaTimer = null;
 function saveMetaDebounced(){
   clearTimeout(saveMetaTimer);
@@ -854,9 +768,6 @@ function saveMetaDebounced(){
   }, 250);
 }
 
-/***********************
- * Actions
- ***********************/
 async function addIncome(dateStr, amount, note){
   if (!dateStr) return alert("Pon la fecha del ingreso.");
   if (amount <= 0) return alert("Pon un monto válido.");
@@ -871,12 +782,11 @@ async function addIncome(dateStr, amount, note){
   });
 }
 
-/** ✅ GASTO: name NO requerido (si está vacío, usamos la categoría) */
 async function addExpense(){
   const dateStr = els.expDate.value;
   const category = els.expCategory.value || "Sin categoría";
-  const nameInput = (els.expName?.value || "").trim(); // opcional
-  const name = nameInput || category; // fallback
+  const nameInput = (els.expName?.value || "").trim();
+  const name = nameInput || category;
   const amount = parseNumber(els.expAmount.value);
 
   if (!dateStr) return alert("Pon la fecha del gasto.");
@@ -896,22 +806,26 @@ async function addExpense(){
   els.expAmount.value = "";
 }
 
+/** ✅ FIJO: nombre NO requerido (si está vacío, usamos la categoría) */
 async function addFixedTemplate(){
-  const name = (els.fixedName.value || "").trim();
   const category = els.fixedCategory.value || "Sin categoría";
+  const nameInput = (els.fixedName?.value || "").trim(); // opcional
+  const name = nameInput || category; // fallback a la categoría
   const amount = parseNumber(els.fixedAmount.value);
   const day = clamp(Number(els.fixedDay.value || 1), 1, 31);
 
-  if (!name) return alert("Pon el nombre del fijo.");
-  if (amount <= 0) return alert("Pon un monto válido.");
+  if (amount < 0) return alert("El monto no puede ser negativo.");
 
   await fixedCol(currentUser.uid, currentProfileId).add({
-    name, category, amount, day,
+    name,
+    category,
+    amount,
+    day,
     isDefault: false,
     createdAt: new Date().toISOString(),
   });
 
-  els.fixedName.value = "";
+  if (els.fixedName) els.fixedName.value = "";
   els.fixedAmount.value = "";
 }
 
@@ -944,44 +858,6 @@ async function applyFixedToYear(){
   alert("Listo ✅ Fijos aplicados al año.");
 }
 
-async function saveMonthlySalaries(){
-  const year = Number(els.yearSelect.value || nowYear());
-  const payDay = clamp(Number(meta.payDay || 15), 1, 31);
-
-  const inputs = els.monthlyGrid.querySelectorAll("input[data-mid]");
-  let saved = 0;
-
-  for (const inp of inputs) {
-    const id = inp.getAttribute("data-mid");
-    const amount = parseNumber(inp.value);
-
-    const parts = id.split("-");
-    const y = Number(parts[1]);
-    const m = Number(parts[2]);
-
-    const dt = new Date(y, m-1, clamp(payDay,1,31), 0,0,0,0);
-    const dateStr = isoDateFromDate(dt);
-
-    const ref = incomesCol(currentUser.uid, currentProfileId).doc(id);
-
-    if (amount > 0) {
-      await ref.set({
-        dateStr,
-        dateTs: TS.fromDate(dt),
-        amount,
-        note: "Salario mensual",
-        source: "monthlyPlan",
-        createdAt: new Date().toISOString(),
-      }, { merge:true });
-      saved++;
-    } else {
-      try { await ref.delete(); } catch {}
-    }
-  }
-
-  setText(els.monthlyMsg, `Guardado ✅ (${saved} meses).`);
-}
-
 async function exportAll(){
   const year = Number(els.yearSelect.value || nowYear());
   const payload = { exportedAt: new Date().toISOString(), profileId: currentProfileId, meta, year, incomes, expenses, fixedTemplates };
@@ -1011,9 +887,6 @@ async function resetYear(){
   alert("Año reseteado ✅");
 }
 
-/***********************
- * Render all
- ***********************/
 function renderAll(){
   if (!meta) return;
 
@@ -1029,9 +902,6 @@ function renderAll(){
   renderSavePlan();
 }
 
-/***********************
- * Open profile
- ***********************/
 async function openProfile(profileId){
   currentProfileId = profileId;
   localStorage.setItem("lastProfileId", profileId);
@@ -1054,7 +924,7 @@ async function openProfile(profileId){
   els.currency.value = meta.currency;
   els.payFrequency.value = meta.payFrequency;
   els.lastPayDate.value = meta.lastPayDate;
-  els.payDay.value = String(meta.payDay);
+  if (els.payDay) els.payDay.value = String(meta.payDay);
   toggleHidden(els.payDayWrap, meta.payFrequency !== "monthly");
 
   buildYearSelect();
@@ -1073,9 +943,6 @@ async function openProfile(profileId){
   setActiveTab("plan");
 }
 
-/***********************
- * Events
- ***********************/
 on(els.btnTogglePass,"click", ()=>{
   const hidden = els.authPass.type === "password";
   els.authPass.type = hidden ? "text" : "password";
@@ -1146,10 +1013,14 @@ on(els.payDay,"input", ()=>{ meta.payDay=clamp(Number(els.payDay.value||15),1,31
 
 on(els.btnAddCategory,"click", ()=> addCategoryFlow());
 
-on(els.fixedCategory,"change", async ()=> { if (els.fixedCategory.value==="__ADD__") await addCategoryFlow(); });
+on(els.fixedCategory,"change", async ()=> {
+  if (els.fixedCategory.value === "__ADD__") { await addCategoryFlow(); return; }
+  // autollenar el nombre opcional si está vacío (solo si abres detalles)
+  if (els.fixedName && !els.fixedName.value.trim()) els.fixedName.value = els.fixedCategory.value;
+});
+
 on(els.expCategory,"change", async ()=> {
   if (els.expCategory.value === "__ADD__") { await addCategoryFlow(); return; }
-  // Autollenar nota si está vacío (opcional)
   if (els.expName && !els.expName.value.trim()) els.expName.value = els.expCategory.value;
 });
 
@@ -1175,14 +1046,9 @@ on(els.btnAddQuickPay,"click", async ()=>{
 on(els.btnAddExpense,"click", ()=> addExpense());
 on(els.btnAddFixed,"click", ()=> addFixedTemplate());
 on(els.btnApplyFixedYear,"click", ()=> applyFixedToYear());
-on(els.btnSaveMonthly,"click", ()=> saveMonthlySalaries());
-
 on(els.btnExport,"click", ()=> exportAll());
 on(els.btnResetYear,"click", ()=> resetYear());
 
-/***********************
- * Auth state
- ***********************/
 auth.onAuthStateChanged(async (user)=>{
   currentUser = user;
 
