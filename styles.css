@@ -3,10 +3,10 @@
   --card:#121827;
   --text:#eaf0ff;
   --muted:#a8b2cc;
-  --border:rgba(255,255,255,.08);
+  --border:rgba(255,255,255,.10);
   --accent:#4aa3ff;
   --ok:#38d488;
-  --danger:#ff4d4d;
+  --bad:#ff7a7a;
 }
 
 *{box-sizing:border-box}
@@ -20,8 +20,8 @@ body{
   font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
 }
 
-.wrap{max-width:1200px; margin:0 auto; padding:24px;}
-h1{margin:0 0 6px 0; font-size:28px;}
+.wrap{max-width:980px; margin:0 auto; padding:16px;}
+h1{margin:0 0 6px 0; font-size:22px;}
 h2{margin:0; font-size:16px;}
 .muted{color:var(--muted)}
 .tiny{font-size:12px; line-height:1.4}
@@ -30,33 +30,36 @@ h2{margin:0; font-size:16px;}
 .mt{margin-top:12px}
 
 .card{
-  background: linear-gradient(180deg, rgba(74,163,255,.10), transparent 65%), var(--card);
+  background: linear-gradient(180deg, rgba(74,163,255,.08), transparent 65%), var(--card);
   border:1px solid var(--border);
   border-radius:16px;
-  padding:16px;
-  margin:14px 0;
-  box-shadow: 0 12px 30px rgba(0,0,0,.35);
+  padding:14px;
+  margin:12px 0;
+  box-shadow: 0 12px 28px rgba(0,0,0,.35);
 }
 
 .subcard{
   background: rgba(0,0,0,.18);
-  border: 1px solid rgba(255,255,255,.06);
-  border-radius: 16px;
-  padding: 14px;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:16px;
+  padding:14px;
 }
 
-.top{
-  display:flex; align-items:flex-start; justify-content:space-between; gap:14px;
-  margin-bottom:12px;
+.top{display:flex; align-items:flex-start; justify-content:space-between; gap:12px;}
+.topActions{display:flex; gap:8px; flex-wrap:wrap;}
+
+.appHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  margin-bottom:10px;
 }
-.topActions{display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end;}
 
 .rowBetween{display:flex; justify-content:space-between; align-items:center; gap:12px;}
 .rowActions{display:flex; gap:10px; flex-wrap:wrap; align-items:center;}
 
-.grid2{display:grid; grid-template-columns:1fr 1fr; gap:12px;}
-.grid4{display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:12px;}
-.grid5{display:grid; grid-template-columns:1fr 1fr 1fr 1fr 1fr; gap:12px;}
+.stack{display:flex; flex-direction:column; gap:10px;}
 
 .field span{display:block; font-size:12px; color:var(--muted); margin-bottom:6px;}
 
@@ -64,7 +67,7 @@ input, select{
   width:100%;
   padding:10px 12px;
   border-radius:12px;
-  border:1px solid rgba(255,255,255,.10);
+  border:1px solid rgba(255,255,255,.12);
   background: rgba(0,0,0,.25);
   color: var(--text);
   outline:none;
@@ -88,9 +91,11 @@ input:focus, select:focus{
 .btn.danger{border-color: rgba(255,77,77,.45); background: rgba(255,77,77,.12);}
 .fileBtn input{display:none;}
 
-.miniRow{display:flex; gap:10px; flex-wrap:wrap;}
+.passWrap{display:flex; gap:10px; align-items:center;}
+.passWrap input{flex:1;}
+.passBtn{white-space:nowrap;}
+
 .pill{
-  flex:1 1 260px;
   display:flex; justify-content:space-between; gap:10px;
   padding:10px 12px;
   border-radius:14px;
@@ -99,8 +104,54 @@ input:focus, select:focus{
 }
 
 .ok{color:var(--ok)}
-.bad{color:#ff7a7a}
-.right{text-align:right;}
+.bad{color:var(--bad)}
+
+.tabs{
+  display:flex;
+  gap:8px;
+  padding:8px;
+  border-radius:14px;
+  border:1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.16);
+  margin-bottom:12px;
+  overflow:auto;
+}
+.tabBtn{
+  flex:1;
+  min-width:90px;
+  border:none;
+  border-radius:12px;
+  padding:10px 10px;
+  cursor:pointer;
+  background: transparent;
+  color: var(--muted);
+  border:1px solid rgba(255,255,255,.06);
+}
+.tabBtn.active{
+  color: var(--text);
+  background: rgba(74,163,255,.18);
+  border-color: rgba(74,163,255,.35);
+}
+.tab{margin-top:10px;}
+
+.seg{
+  display:flex;
+  border:1px solid rgba(255,255,255,.08);
+  border-radius:14px;
+  overflow:hidden;
+}
+.segBtn{
+  flex:1;
+  padding:10px;
+  background: transparent;
+  color: var(--muted);
+  border:none;
+  cursor:pointer;
+}
+.segBtn.active{
+  background: rgba(74,163,255,.18);
+  color: var(--text);
+}
 
 .table{border:1px solid rgba(255,255,255,.06); border-radius:14px; overflow:hidden;}
 .thead, .trow{
@@ -125,47 +176,22 @@ input:focus, select:focus{
 .listHeadFixed{grid-template-columns: 1.3fr 1fr .5fr .8fr 44px;}
 .listRowFixed{grid-template-columns: 1.3fr 1fr .5fr .8fr 44px;}
 
+.right{text-align:right;}
+
 .profilesList{
   display:grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap:12px;
 }
 .profileCard{
-  padding:14px;
+  padding:12px;
   border-radius:16px;
   border:1px solid rgba(255,255,255,.10);
   background: rgba(0,0,0,.18);
-  display:flex;
-  flex-direction:column;
-  gap:8px;
 }
-.profileCard .row{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-}
+.profileCard .row{display:flex; justify-content:space-between; align-items:center; gap:10px;}
 .profileCard .name{font-weight:800;}
-.profileCard .meta{font-size:12px; color:var(--muted);}
-
-.passWrap{display:flex; gap:10px; align-items:center;}
-.passWrap input{flex:1;}
-.passBtn{white-space:nowrap;}
-
-.hr{border:none; border-top:1px solid rgba(255,255,255,.08); margin:14px 0;}
-.foot{opacity:.9; margin-top:8px;}
-
-.charts{
-  display:grid;
-  grid-template-columns: 1.4fr 1fr;
-  gap:12px;
-}
-.chartCard{
-  border:1px solid rgba(255,255,255,.06);
-  background: rgba(0,0,0,.18);
-  border-radius:16px;
-  padding:12px;
-}
+.profileCard .meta{font-size:12px; color:var(--muted); margin-top:6px;}
 
 .plan{display:flex; flex-direction:column; gap:10px;}
 .planRow{
@@ -176,9 +202,21 @@ input:focus, select:focus{
   background: rgba(0,0,0,.18);
 }
 
+.charts{
+  display:grid;
+  grid-template-columns: 1fr;
+  gap:12px;
+}
+.chartCard{
+  border:1px solid rgba(255,255,255,.06);
+  background: rgba(0,0,0,.18);
+  border-radius:16px;
+  padding:12px;
+}
+
 .monthGrid{
   display:grid;
-  grid-template-columns: repeat(4, minmax(0, 1fr));
+  grid-template-columns: repeat(2, minmax(0,1fr));
   gap:10px;
 }
 .monthCell{
@@ -193,11 +231,14 @@ input:focus, select:focus{
   margin-bottom:6px;
 }
 
-@media (max-width: 980px){
-  .grid2,.grid4,.grid5{grid-template-columns:1fr;}
+/* Mobile tweaks */
+@media (max-width: 520px){
   .profilesList{grid-template-columns:1fr;}
-  .charts{grid-template-columns:1fr;}
-  .monthGrid{grid-template-columns:1fr;}
-  .thead, .trow{grid-template-columns:1fr;}
+  .listHeadIncome, .listRowIncome,
+  .listHeadExpense, .listRowExpense,
+  .listHeadFixed, .listRowFixed{
+    grid-template-columns: 1fr;
+  }
   .right{text-align:left;}
+  .monthGrid{grid-template-columns:1fr;}
 }

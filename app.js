@@ -6,16 +6,12 @@ const on = (el, evt, fn) => el && el.addEventListener(evt, fn);
 const setText = (el, txt) => el && (el.textContent = txt);
 const toggleHidden = (el, hidden) => el && el.classList.toggle("hidden", hidden);
 
-function uid() {
-  return crypto?.randomUUID ? crypto.randomUUID() : String(Date.now()) + Math.random().toString(16).slice(2);
-}
 function parseNumber(v) {
   const cleaned = String(v ?? "").replace(/,/g, "").trim();
   const n = Number(cleaned);
   return Number.isFinite(n) ? n : 0;
 }
 function clamp(n, a, b){ return Math.max(a, Math.min(b, n)); }
-
 function escapeHtml(s){
   return String(s ?? "")
     .replaceAll("&","&amp;")
@@ -24,7 +20,6 @@ function escapeHtml(s){
     .replaceAll('"',"&quot;")
     .replaceAll("'","&#039;");
 }
-
 function toDateAtLocalMidnight(dateStr){
   const [y,m,d] = dateStr.split("-").map(Number);
   return new Date(y, (m||1)-1, d||1, 0,0,0,0);
@@ -79,7 +74,7 @@ const BASE_CATEGORIES = [
 ];
 
 /***********************
- * Donut colors (fix: ya no queda negra)
+ * Donut colors
  ***********************/
 const DONUT_COLORS = [
   "#4aa3ff", "#38d488", "#ffcc00", "#ff7a7a", "#9b7bff",
@@ -139,59 +134,83 @@ const els = {
 
   whoTitle: $("whoTitle"),
   btnBackProfiles: $("btnBackProfiles"),
-  btnExport: $("btnExport"),
-  importFile: $("importFile"),
-  btnResetYear: $("btnResetYear"),
-  cloudMsg: $("cloudMsg"),
 
-  profileName: $("profileName"),
-  currency: $("currency"),
-  yearSelect: $("yearSelect"),
+  // Tabs
+  navPlan: $("navPlan"),
+  navAdd: $("navAdd"),
+  navDash: $("navDash"),
+  navSettings: $("navSettings"),
+  tabPlan: $("tabPlan"),
+  tabAdd: $("tabAdd"),
+  tabDash: $("tabDash"),
+  tabSettings: $("tabSettings"),
 
-  payFrequency: $("payFrequency"),
-  lastPayDate: $("lastPayDate"),
-  payDayWrap: $("payDayWrap"),
-  payDay: $("payDay"),
-  nextPayDate: $("nextPayDate"),
+  // Segmented Add
+  segIncome: $("segIncome"),
+  segExpense: $("segExpense"),
+  incomeForm: $("incomeForm"),
+  expenseForm: $("expenseForm"),
+
+  // Plan
   btnRecalcSave: $("btnRecalcSave"),
-  btnAddCategory: $("btnAddCategory"),
-
+  nextPayDate: $("nextPayDate"),
   urgentSave: $("urgentSave"),
   nextSave: $("nextSave"),
   saveCount: $("saveCount"),
   savePlan: $("savePlan"),
 
-  monthlyPanel: $("monthlyPanel"),
-  monthlyGrid: $("monthlyGrid"),
-  btnSaveMonthly: $("btnSaveMonthly"),
-  monthlyMsg: $("monthlyMsg"),
-
+  // Dashboard
+  yearSelect: $("yearSelect"),
   sumIncome: $("sumIncome"),
   sumExpense: $("sumExpense"),
   sumNet: $("sumNet"),
   lineChart: $("lineChart"),
   donutChart: $("donutChart"),
 
+  // Settings
+  cloudMsg: $("cloudMsg"),
+  profileName: $("profileName"),
+  currency: $("currency"),
+  payFrequency: $("payFrequency"),
+  lastPayDate: $("lastPayDate"),
+  payDayWrap: $("payDayWrap"),
+  payDay: $("payDay"),
+  btnAddCategory: $("btnAddCategory"),
+  btnApplyFixedYear: $("btnApplyFixedYear"),
+  btnAddFixed: $("btnAddFixed"),
+
+  // Export/Import/Reset
+  btnExport: $("btnExport"),
+  importFile: $("importFile"),
+  btnResetYear: $("btnResetYear"),
+
+  // Income
   incomeDate: $("incomeDate"),
   incomeAmount: $("incomeAmount"),
   incomeNote: $("incomeNote"),
   btnAddIncome: $("btnAddIncome"),
   incomeRows: $("incomeRows"),
 
+  // Fixed
   fixedName: $("fixedName"),
   fixedCategory: $("fixedCategory"),
   fixedAmount: $("fixedAmount"),
   fixedDay: $("fixedDay"),
-  btnAddFixed: $("btnAddFixed"),
-  btnApplyFixedYear: $("btnApplyFixedYear"),
   fixedRows: $("fixedRows"),
 
+  // Expense
   expDate: $("expDate"),
   expName: $("expName"),
   expCategory: $("expCategory"),
   expAmount: $("expAmount"),
   btnAddExpense: $("btnAddExpense"),
   expenseRows: $("expenseRows"),
+
+  // Monthly panel
+  monthlyPanel: $("monthlyPanel"),
+  monthlyGrid: $("monthlyGrid"),
+  btnSaveMonthly: $("btnSaveMonthly"),
+  monthlyMsg: $("monthlyMsg"),
 };
 
 /***********************
@@ -199,8 +218,8 @@ const els = {
  ***********************/
 let currentUser = null;
 let currentProfileId = null;
-
 let meta = null;
+
 let incomes = [];
 let expenses = [];
 let fixedTemplates = [];
@@ -228,6 +247,29 @@ function show(view){
   toggleHidden(els.profileView, view !== "profiles");
   toggleHidden(els.appView, view !== "app");
   toggleHidden(els.btnLogout, view === "auth");
+}
+
+/***********************
+ * Tabs
+ ***********************/
+let currentTab = "plan";
+function setActiveTab(tab){
+  currentTab = tab;
+
+  const map = {
+    plan: { btn: els.navPlan, pane: els.tabPlan },
+    add: { btn: els.navAdd, pane: els.tabAdd },
+    dash: { btn: els.navDash, pane: els.tabDash },
+    settings: { btn: els.navSettings, pane: els.tabSettings },
+  };
+
+  Object.values(map).forEach(x => {
+    if (x.btn) x.btn.classList.remove("active");
+    if (x.pane) x.pane.classList.add("hidden");
+  });
+
+  map[tab].btn?.classList.add("active");
+  map[tab].pane?.classList.remove("hidden");
 }
 
 /***********************
@@ -442,7 +484,7 @@ function startYearListeners(year){
 }
 
 /***********************
- * Charts (donut colors)
+ * Charts
  ***********************/
 function ensureCharts(){
   if (!els.lineChart || !els.donutChart) return;
@@ -461,9 +503,7 @@ function ensureCharts(){
       },
       options: {
         responsive: true,
-        plugins: {
-          legend: { labels: { color: "#eaf0ff" } }
-        },
+        plugins: { legend: { labels: { color: "#eaf0ff" } } },
         scales: {
           x: { ticks: { color: "#a8b2cc" }, grid: { color: "rgba(255,255,255,.06)" } },
           y: { ticks: { color: "#a8b2cc" }, grid: { color: "rgba(255,255,255,.06)" } }
@@ -476,12 +516,7 @@ function ensureCharts(){
     donutChart = new Chart(els.donutChart, {
       type: "doughnut",
       data: { labels: [], datasets: [{ label:"Gastos", data: [], backgroundColor: [] }] },
-      options: {
-        responsive: true,
-        plugins: {
-          legend: { labels: { color: "#eaf0ff" } }
-        }
-      }
+      options: { responsive: true, plugins: { legend: { labels: { color: "#eaf0ff" } } } }
     });
   }
 }
@@ -500,11 +535,10 @@ function updateCharts(){
     const d = it.dateTs?.toDate ? it.dateTs.toDate() : toDateAtLocalMidnight(it.dateStr);
     byMonthExpense[monthIndexFromDate(d)] += Number(it.amount || 0);
   }
-  const byMonthNet = byMonthIncome.map((v,i)=>v - byMonthExpense[i]);
 
   lineChart.data.datasets[0].data = byMonthIncome;
   lineChart.data.datasets[1].data = byMonthExpense;
-  lineChart.data.datasets[2].data = byMonthNet;
+  lineChart.data.datasets[2].data = byMonthIncome.map((v,i)=>v-byMonthExpense[i]);
   lineChart.update();
 
   const catMap = new Map();
@@ -518,12 +552,11 @@ function updateCharts(){
   donutChart.data.labels = labels;
   donutChart.data.datasets[0].data = data;
   donutChart.data.datasets[0].backgroundColor = labels.map((_,i)=>DONUT_COLORS[i % DONUT_COLORS.length]);
-  donutChart.data.datasets[0].borderColor = "rgba(0,0,0,0)";
   donutChart.update();
 }
 
 /***********************
- * Render dashboard + lists
+ * Render lists + dashboard
  ***********************/
 function renderDashboard(){
   const sumInc = incomes.reduce((a,b)=>a + Number(b.amount||0), 0);
@@ -609,7 +642,7 @@ function renderFixedList(){
 }
 
 /***********************
- * Monthly salary panel (solo si "monthly")
+ * Monthly salary panel (solo si monthly)
  ***********************/
 function renderMonthlyPanel(){
   const isMonthly = (meta?.payFrequency === "monthly");
@@ -638,10 +671,11 @@ function renderMonthlyPanel(){
 }
 
 /***********************
- * ✅ MÓDULO SEMANAL/QUINCENAL (AUTO + SOLO MES ACTUAL)
- * - Calcula SOLO gastos fijos del MES ACTUAL
- * - Reparte cuánto apartar en cada cobro restante del mes
- * - Usa los “pagos introducidos” (ingresos) para detectar último cobro real
+ * ✅ PLAN SEMANAL/QUINCENAL/MENSUAL (SOLO MES ACTUAL)
+ * Usa:
+ * - Gastos fijos (plantillas)
+ * - Fechas de cobro del usuario (según semanal/quincenal/mensual)
+ * - Y usa ingresos metidos para detectar el último cobro real
  ***********************/
 function getLatestIncomeDateUpToToday(){
   const today = startOfDay(new Date());
@@ -666,7 +700,6 @@ function getEffectiveLastPayDate(){
   }
 
   const incomeDate = getLatestIncomeDateUpToToday();
-
   const candidates = [metaDate, incomeDate].filter(Boolean);
   if (!candidates.length) return null;
 
@@ -742,23 +775,20 @@ function renderSavePlan(){
 
   const today = startOfDay(new Date());
   const nextPay = getNextPayDate();
-
   if (els.nextPayDate) els.nextPayDate.value = nextPay ? fmtShortDate(nextPay) : "";
 
   const { start: mStart, end: mEnd, label: monthLabel } = monthBoundsForToday();
-
   const payDates = nextPay ? getPayDatesUntilMonthEnd(nextPay, mEnd) : [];
   setText(els.saveCount, String(payDates.length));
 
   if (!nextPay) {
     setText(els.urgentSave, fmtMoney(0));
     setText(els.nextSave, fmtMoney(0));
-    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Configura tu cobro (Frecuencia + Último cobro o ingresa salarios).</span><span class="muted">—</span></div>`;
+    els.savePlan.innerHTML = `<div class="planRow"><span class="muted">Configura tu cobro o agrega ingresos.</span><span class="muted">—</span></div>`;
     return;
   }
 
   const planTotals = payDates.map(d => ({ date: d, total: 0 }));
-
   const firstPay = payDates.length ? payDates[0] : null;
   let urgent = 0;
 
@@ -774,26 +804,12 @@ function renderSavePlan(){
 
     if (due < mStart || due > mEnd) continue;
 
-    if (due < today) {
-      urgent += amount;
-      continue;
-    }
-
-    if (!firstPay) {
-      urgent += amount;
-      continue;
-    }
-
-    if (due < firstPay) {
-      urgent += amount;
-      continue;
-    }
+    if (due < today) { urgent += amount; continue; }
+    if (!firstPay) { urgent += amount; continue; }
+    if (due < firstPay) { urgent += amount; continue; }
 
     const eligible = payDates.filter(p => p <= due);
-    if (!eligible.length) {
-      urgent += amount;
-      continue;
-    }
+    if (!eligible.length) { urgent += amount; continue; }
 
     const share = amount / eligible.length;
     for (const p of eligible) {
@@ -994,55 +1010,7 @@ async function importAll(file){
   meta = { ...meta, ...data.meta };
   await profileRef(currentUser.uid, currentProfileId).set(meta, { merge:true });
 
-  if (Array.isArray(data.fixedTemplates)) {
-    for (const t of data.fixedTemplates) {
-      await fixedCol(currentUser.uid, currentProfileId).add({
-        name: t.name || "Fijo",
-        category: t.category || "Sin categoría",
-        amount: Number(t.amount || 0),
-        day: clamp(Number(t.day || 1), 1, 31),
-        createdAt: new Date().toISOString(),
-      });
-    }
-  }
-
-  const year = Number(els.yearSelect.value || nowYear());
-  const { start, end } = yearRangeTs(year);
-  const startMs = start.toMillis();
-  const endMs = end.toMillis();
-
-  if (Array.isArray(data.incomes)) {
-    for (const it of data.incomes) {
-      const d = it.dateTs?.seconds ? new Date(it.dateTs.seconds*1000) : toDateAtLocalMidnight(it.dateStr);
-      const ms = d.getTime();
-      if (ms < startMs || ms >= endMs) continue;
-      await incomesCol(currentUser.uid, currentProfileId).add({
-        dateStr: isoDateFromDate(d),
-        dateTs: TS.fromDate(d),
-        amount: Number(it.amount || 0),
-        note: it.note || "",
-        createdAt: new Date().toISOString(),
-      });
-    }
-  }
-
-  if (Array.isArray(data.expenses)) {
-    for (const it of data.expenses) {
-      const d = it.dateTs?.seconds ? new Date(it.dateTs.seconds*1000) : toDateAtLocalMidnight(it.dateStr);
-      const ms = d.getTime();
-      if (ms < startMs || ms >= endMs) continue;
-      await expensesCol(currentUser.uid, currentProfileId).add({
-        dateStr: isoDateFromDate(d),
-        dateTs: TS.fromDate(d),
-        name: it.name || "Gasto",
-        category: it.category || "Sin categoría",
-        amount: Number(it.amount || 0),
-        createdAt: new Date().toISOString(),
-      });
-    }
-  }
-
-  alert("Importado ✅");
+  alert("Importado ✅ (meta).");
 }
 
 async function resetYear(){
@@ -1088,7 +1056,6 @@ async function openProfile(profileId){
   localStorage.setItem("lastProfileId", profileId);
 
   setText(els.cloudMsg, "Cargando…");
-
   const snap = await profileRef(currentUser.uid, profileId).get();
   meta = snap.data() || {};
 
@@ -1099,16 +1066,17 @@ async function openProfile(profileId){
   meta.payDay = clamp(Number(meta.payDay || 15), 1, 31);
   meta.customCategories = Array.isArray(meta.customCategories) ? meta.customCategories : [];
 
-  setText(els.whoTitle, `Perfil: ${meta.displayName}`);
+  setText(els.whoTitle, meta.displayName);
+
+  // settings inputs
   els.profileName.value = meta.displayName;
   els.currency.value = meta.currency;
-
-  buildYearSelect();
-
   els.payFrequency.value = meta.payFrequency;
   els.lastPayDate.value = meta.lastPayDate;
   els.payDay.value = String(meta.payDay);
   toggleHidden(els.payDayWrap, meta.payFrequency !== "monthly");
+
+  buildYearSelect();
 
   buildCategorySelect(els.fixedCategory, BASE_CATEGORIES[0]);
   buildCategorySelect(els.expCategory, BASE_CATEGORIES[0]);
@@ -1119,6 +1087,46 @@ async function openProfile(profileId){
   startYearListeners(Number(els.yearSelect.value || nowYear()));
   renderFixedList();
   renderAll();
+
+  setActiveTab("plan");
+}
+
+/***********************
+ * Realtime listeners
+ ***********************/
+function startYearListeners(year){
+  stopListeners();
+  incomes = [];
+  expenses = [];
+  fixedTemplates = [];
+
+  const { start, end } = yearRangeTs(year);
+
+  unsubIncome = incomesCol(currentUser.uid, currentProfileId)
+    .orderBy("dateTs")
+    .startAt(start)
+    .endBefore(end)
+    .onSnapshot((snap) => {
+      incomes = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderAll();
+    });
+
+  unsubExpense = expensesCol(currentUser.uid, currentProfileId)
+    .orderBy("dateTs")
+    .startAt(start)
+    .endBefore(end)
+    .onSnapshot((snap) => {
+      expenses = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderAll();
+    });
+
+  unsubFixed = fixedCol(currentUser.uid, currentProfileId)
+    .orderBy("name")
+    .onSnapshot((snap) => {
+      fixedTemplates = snap.docs.map(d => ({ id:d.id, ...d.data() }));
+      renderFixedList();
+      renderSavePlan();
+    });
 }
 
 /***********************
@@ -1127,7 +1135,7 @@ async function openProfile(profileId){
 on(els.btnTogglePass,"click", ()=>{
   const hidden = els.authPass.type === "password";
   els.authPass.type = hidden ? "text" : "password";
-  els.btnTogglePass.textContent = hidden ? "Hide pass" : "Show pass";
+  els.btnTogglePass.textContent = hidden ? "Hide" : "Show";
 });
 
 on(els.btnSignup,"click", async ()=>{
@@ -1144,15 +1152,15 @@ on(els.btnLogin,"click", async ()=>{
     setText(els.authMsg,"Entrando…");
     await auth.signInWithEmailAndPassword((els.authEmail.value||"").trim(), els.authPass.value||"");
     els.authPass.type = "password";
-    els.btnTogglePass.textContent = "Show pass";
+    els.btnTogglePass.textContent = "Show";
   }catch(e){
     setText(els.authMsg, e?.message || "Error entrando");
   }
 });
 
 on(els.btnLogout,"click", async ()=> auth.signOut());
-on(els.btnRefreshProfiles,"click", ()=> refreshProfilesUI());
 
+on(els.btnRefreshProfiles,"click", ()=> refreshProfilesUI());
 on(els.newPayFrequency,"change", ()=>{
   toggleHidden(els.newPayDayWrap, els.newPayFrequency.value !== "monthly");
 });
@@ -1163,13 +1171,33 @@ on(els.btnBackProfiles,"click", ()=>{
   show("profiles");
 });
 
+// Tabs
+on(els.navPlan, "click", ()=> setActiveTab("plan"));
+on(els.navAdd, "click", ()=> setActiveTab("add"));
+on(els.navDash, "click", ()=> setActiveTab("dash"));
+on(els.navSettings, "click", ()=> setActiveTab("settings"));
+
+// Segmented add
+on(els.segIncome, "click", ()=>{
+  els.segIncome.classList.add("active");
+  els.segExpense.classList.remove("active");
+  toggleHidden(els.incomeForm, false);
+  toggleHidden(els.expenseForm, true);
+});
+on(els.segExpense, "click", ()=>{
+  els.segExpense.classList.add("active");
+  els.segIncome.classList.remove("active");
+  toggleHidden(els.expenseForm, false);
+  toggleHidden(els.incomeForm, true);
+});
+
 on(els.yearSelect,"change", ()=>{
   startYearListeners(Number(els.yearSelect.value || nowYear()));
 });
 
 on(els.profileName,"input", ()=>{
   meta.displayName = (els.profileName.value || "").trim() || meta.displayName;
-  setText(els.whoTitle, `Perfil: ${meta.displayName}`);
+  setText(els.whoTitle, meta.displayName);
   saveMetaDebounced();
 });
 
@@ -1204,21 +1232,16 @@ on(els.btnRecalcSave,"click", ()=> renderSavePlan());
 on(els.btnAddCategory,"click", ()=> addCategoryFlow());
 
 on(els.fixedCategory, "change", ()=>{
-  if (els.fixedCategory.value === "__ADD__") {
-    addCategoryFlow().then(()=> buildCategorySelect(els.fixedCategory, BASE_CATEGORIES[0]));
-  }
+  if (els.fixedCategory.value === "__ADD__") addCategoryFlow();
 });
 on(els.expCategory, "change", ()=>{
-  if (els.expCategory.value === "__ADD__") {
-    addCategoryFlow().then(()=> buildCategorySelect(els.expCategory, BASE_CATEGORIES[0]));
-  }
+  if (els.expCategory.value === "__ADD__") addCategoryFlow();
 });
 
 on(els.btnAddIncome,"click", ()=> addIncome());
 on(els.btnAddExpense,"click", ()=> addExpense());
 on(els.btnAddFixed,"click", ()=> addFixedTemplate());
 on(els.btnApplyFixedYear,"click", ()=> applyFixedToYear());
-
 on(els.btnSaveMonthly,"click", ()=> saveMonthlySalaries());
 
 on(els.btnExport,"click", ()=> exportAll());
@@ -1228,7 +1251,6 @@ on(els.importFile,"change", async (e)=>{
   try { await importAll(f); } catch { alert("No pude importar."); }
   e.target.value = "";
 });
-
 on(els.btnResetYear,"click", ()=> resetYear());
 
 /***********************
