@@ -1,413 +1,51 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>Mis Finanzas</title>
-  <link rel="stylesheet" href="styles.css?v=1.2.2"/>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Finanzas Familiares Pro</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-  <div class="wrap">
-    <header class="top">
-      <div>
-        <h1>Mis Finanzas</h1>
-        <p class="muted tiny" id="topSubtitle">Minimal · Mobile</p>
-      </div>
-      <div class="topActions">
-        <button id="btnLogout" class="btn ghost hidden" type="button">Salir</button>
-      </div>
-    </header>
-
-    <!-- AUTH -->
-    <section id="authView" class="card">
-      <h2>Iniciar sesión</h2>
-
-      <div class="stack mt">
-        <label class="field">
-          <span>Email</span>
-          <input id="authEmail" type="email" placeholder="tuemail@gmail.com" autocomplete="email" />
-        </label>
-
-        <label class="field">
-          <span>Password</span>
-          <div class="passWrap">
-            <input id="authPass" type="password" placeholder="••••••••" autocomplete="current-password" />
-            <button id="btnTogglePass" type="button" class="btn ghost passBtn">Show</button>
-          </div>
-        </label>
-      </div>
-
-      <div class="rowActions mt">
-        <button id="btnLogin" class="btn" type="button">Entrar</button>
-        <button id="btnSignup" class="btn ghost" type="button">Crear cuenta</button>
-      </div>
-
-      <div id="authMsg" class="muted tiny mt"></div>
-    </section>
-
-    <!-- PROFILES -->
-    <section id="profileView" class="card hidden">
-      <div class="rowBetween">
-        <div>
-          <h2>Perfiles</h2>
-          <p class="muted tiny">Cada perfil guarda moneda, cobro, fijos y datos.</p>
-        </div>
-        <button id="btnRefreshProfiles" class="btn ghost" type="button">Actualizar</button>
-      </div>
-
-      <div id="profilesList" class="profilesList mt"></div>
-
-      <details class="mt">
-        <summary class="muted tiny">➕ Crear perfil</summary>
-
-        <div class="stack mt">
-          <label class="field">
-            <span>Nombre</span>
-            <input id="newProfileName" placeholder="Ej: Noel, Jenniffer..." />
-          </label>
-
-          <label class="field">
-            <span>Moneda</span>
-            <select id="newCurrency">
-              <option value="USD" selected>USD ($)</option>
-              <option value="EUR">EUR (€)</option>
-              <option value="MXN">MXN ($)</option>
-              <option value="COP">COP ($)</option>
-              <option value="DOP">DOP ($)</option>
-              <option value="CAD">CAD ($)</option>
-            </select>
-          </label>
-
-          <label class="field">
-            <span>Cobro</span>
-            <select id="newPayFrequency">
-              <option value="weekly">Semanal</option>
-              <option value="biweekly" selected>Quincenal (14 días)</option>
-              <option value="monthly">Mensual</option>
-            </select>
-          </label>
-
-          <label class="field hidden" id="newPayDayWrap">
-            <span>Día de cobro mensual (1-31)</span>
-            <input id="newPayDay" type="number" min="1" max="31" placeholder="Ej: 15"/>
-          </label>
-
-          <button id="btnCreateProfile" class="btn" type="button">Crear perfil</button>
-          <div id="profilesMsg" class="muted tiny"></div>
-        </div>
-      </details>
-    </section>
-
-    <!-- APP -->
-    <section id="appView" class="card hidden appCard">
-      <div class="appHeader">
-        <div>
-          <div class="muted tiny">Perfil</div>
-          <div class="strong" id="whoTitle">—</div>
-        </div>
-        <button id="btnBackProfiles" class="btn ghost" type="button">Cambiar</button>
-      </div>
-
-      <nav class="tabs">
-        <button id="navPlan" class="tabBtn active" type="button">Plan</button>
-        <button id="navAdd" class="tabBtn" type="button">Agregar</button>
-        <button id="navDash" class="tabBtn" type="button">Dashboard</button>
-        <button id="navSettings" class="tabBtn" type="button">Ajustes</button>
-      </nav>
-
-      <!-- TAB: PLAN -->
-      <section id="tabPlan" class="tab">
-        <div class="subcard">
-          <div class="rowBetween">
-            <h2>Apartar por cobro</h2>
-            <button id="btnRecalcSave" class="btn ghost" type="button">Actualizar</button>
-          </div>
-
-          <div id="quickPayWrap" class="stack mt hidden">
-            <div class="muted tiny">Cobro (Semanal/Quincenal)</div>
-            <label class="field">
-              <span>Fecha cobro</span>
-              <input id="quickPayDate" type="date"/>
-            </label>
-            <label class="field">
-              <span>Monto cobrado</span>
-              <input id="quickPayAmount" inputmode="decimal" placeholder="Ej: 1200"/>
-            </label>
-            <button id="btnAddQuickPay" class="btn" type="button">+ Guardar cobro</button>
-          </div>
-
-          <div class="stack mt">
-            <label class="field">
-              <span>Próximo cobro</span>
-              <input id="nextPayDate" type="text" readonly />
-            </label>
-
-            <div class="pill">
-              <span class="muted">Urgente (antes del próximo cobro)</span>
-              <span id="urgentSave" class="strong">$0</span>
+    <div class="app-container">
+        <header class="main-header">
+            <div class="month-selector">
+                <input type="month" id="filtro-mes">
             </div>
+            <small>Balance del Mes</small>
+            <h1 id="balance-total">$0.00</h1>
+        </header>
 
-            <div class="pill">
-              <span class="muted">Apartar en el próximo cobro</span>
-              <span id="nextSave" class="strong">$0</span>
-            </div>
-
-            <div class="pill">
-              <span class="muted">Cobros que quedan este mes</span>
-              <span id="saveCount" class="strong">0</span>
-            </div>
-          </div>
-
-          <div id="savePlan" class="plan mt"></div>
-          <p class="muted tiny mt">Este cálculo usa SOLO tus gastos fijos del mes actual.</p>
-        </div>
-      </section>
-
-      <!-- TAB: ADD -->
-      <section id="tabAdd" class="tab hidden">
-        <div class="subcard">
-          <h2>Agregar rápido</h2>
-
-          <div class="seg mt">
-            <button id="segIncome" class="segBtn active" type="button">Ingreso</button>
-            <button id="segExpense" class="segBtn" type="button">Gasto</button>
-          </div>
-
-          <div id="incomeForm" class="stack mt">
-            <label class="field">
-              <span>Fecha</span>
-              <input id="incomeDate" type="date"/>
-            </label>
-            <label class="field">
-              <span>Monto</span>
-              <input id="incomeAmount" inputmode="decimal" placeholder="Ej: 1200"/>
-            </label>
-            <label class="field">
-              <span>Nota (opcional)</span>
-              <input id="incomeNote" placeholder="Ej: Cobro"/>
-            </label>
-            <button id="btnAddIncome" class="btn" type="button">+ Guardar ingreso</button>
-          </div>
-
-          <div id="expenseForm" class="stack mt hidden">
-            <label class="field">
-              <span>Fecha</span>
-              <input id="expDate" type="date"/>
-            </label>
-
-            <label class="field">
-              <span>Categoría</span>
-              <select id="expCategory"></select>
-            </label>
-
-            <label class="field">
-              <span>Monto</span>
-              <input id="expAmount" inputmode="decimal" placeholder="Ej: 45"/>
-            </label>
-
-            <details class="mt">
-              <summary class="muted tiny">Detalles (opcional)</summary>
-              <label class="field mt">
-                <span>Nombre / Nota (opcional)</span>
-                <input id="expName" placeholder="Ej: Walmart, Costco..."/>
-              </label>
-            </details>
-
-            <button id="btnAddExpense" class="btn" type="button">+ Guardar gasto</button>
-          </div>
-
-          <details class="mt">
-            <summary class="muted tiny">Ver ingresos del año</summary>
-            <div class="table mt">
-              <div class="thead listHeadIncome">
-                <div>Fecha</div>
-                <div>Nota</div>
-                <div class="right">Monto</div>
-                <div></div>
-              </div>
-              <div id="incomeRows"></div>
-            </div>
-          </details>
-
-          <details class="mt">
-            <summary class="muted tiny">Ver gastos del año</summary>
-            <div class="table mt">
-              <div class="thead listHeadExpense">
-                <div>Fecha</div>
-                <div>Nombre</div>
-                <div>Categoría</div>
-                <div class="right">Monto</div>
-                <div></div>
-              </div>
-              <div id="expenseRows"></div>
-            </div>
-          </details>
-        </div>
-      </section>
-
-      <!-- TAB: DASH -->
-      <section id="tabDash" class="tab hidden">
-        <div class="subcard">
-          <div class="rowBetween">
-            <h2>Dashboard</h2>
-            <select id="yearSelect"></select>
-          </div>
-
-          <div class="stack mt">
-            <div class="pill">
-              <span class="muted">Total cobrado</span>
-              <span id="sumIncome" class="strong">$0</span>
-            </div>
-            <div class="pill">
-              <span class="muted">Total gastado</span>
-              <span id="sumExpense" class="strong">$0</span>
-            </div>
-            <div class="pill">
-              <span class="muted">Libre / Ahorro (neto)</span>
-              <span id="sumNet" class="strong">$0</span>
-            </div>
-          </div>
-
-          <div class="charts mt">
-            <div class="chartCard">
-              <div class="muted tiny">Ingresos vs Gastos</div>
-              <canvas id="lineChart" height="160"></canvas>
-            </div>
-            <div class="chartCard">
-              <div class="muted tiny">Gastos por categoría</div>
-              <canvas id="donutChart" height="160"></canvas>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- TAB: SETTINGS -->
-      <section id="tabSettings" class="tab hidden">
-        <div class="subcard">
-          <div class="rowBetween">
-            <h2>Ajustes</h2>
-            <span id="cloudMsg" class="muted tiny"></span>
-          </div>
-
-          <div class="stack mt">
-            <label class="field">
-              <span>Nombre</span>
-              <input id="profileName" />
-            </label>
-
-            <label class="field">
-              <span>Moneda</span>
-              <select id="currency">
-                <option value="USD">USD ($)</option>
-                <option value="EUR">EUR (€)</option>
-                <option value="MXN">MXN ($)</option>
-                <option value="COP">COP ($)</option>
-                <option value="DOP">DOP ($)</option>
-                <option value="CAD">CAD ($)</option>
-              </select>
-            </label>
-
-            <label class="field">
-              <span>Frecuencia de cobro</span>
-              <select id="payFrequency">
-                <option value="weekly">Semanal</option>
-                <option value="biweekly">Quincenal (14 días)</option>
-                <option value="monthly">Mensual</option>
-              </select>
-            </label>
-
-            <label class="field">
-              <span>Último cobro (solo semanal/quincenal)</span>
-              <input id="lastPayDate" type="date" />
-            </label>
-
-            <label class="field hidden" id="payDayWrap">
-              <span>Día de cobro mensual (1-31)</span>
-              <input id="payDay" type="number" min="1" max="31"/>
-            </label>
-
-            <button id="btnAddCategory" class="btn ghost" type="button">+ Agregar categoría</button>
-          </div>
+        <div class="chart-card">
+            <canvas id="miGrafico"></canvas>
         </div>
 
-        <!-- ✅ FIJOS: nombre opcional -->
-        <div class="subcard mt">
-          <div class="rowBetween">
-            <h2>Gastos fijos</h2>
-            <button id="btnApplyFixedYear" class="btn ghost" type="button">Aplicar al año</button>
-          </div>
-
-          <div class="stack mt">
-            <label class="field">
-              <span>Categoría</span>
-              <select id="fixedCategory"></select>
-            </label>
-
-            <label class="field">
-              <span>Monto</span>
-              <input id="fixedAmount" inputmode="decimal" placeholder="Ej: 1800"/>
-            </label>
-
-            <label class="field">
-              <span>Día del mes (1-31)</span>
-              <input id="fixedDay" type="number" min="1" max="31" placeholder="Ej: 1"/>
-            </label>
-
-            <details class="mt">
-              <summary class="muted tiny">Detalles (opcional)</summary>
-              <label class="field mt">
-                <span>Nombre / Nota (opcional)</span>
-                <input id="fixedName" placeholder="Ej: Renta casa / Internet negocio"/>
-              </label>
-            </details>
-
-            <button id="btnAddFixed" class="btn" type="button">+ Agregar fijo</button>
-          </div>
-
-          <details class="mt" open>
-            <summary class="muted tiny">Editar fijos</summary>
-            <div class="table mt">
-              <div class="thead listHeadFixedEdit">
-                <div>Fijo</div>
-                <div>Cat.</div>
-                <div>Día</div>
-                <div class="right">Monto</div>
-                <div></div>
-              </div>
-              <div id="fixedRows"></div>
+        <main class="input-card">
+            <div class="row">
+                <input type="number" id="monto" placeholder="0.00" inputmode="decimal">
+                <select id="tipo">
+                    <option value="gasto">Gasto</option>
+                    <option value="ingreso">Ingreso</option>
+                </select>
             </div>
-          </details>
-        </div>
+            <input type="text" id="categoria" placeholder="Categoría (Comida, Renta, Salario...)">
+            
+            <div class="actions">
+                <label class="btn-secundario">
+                    📷 Recibo
+                    <input type="file" id="foto" accept="image/*" capture="camera" hidden>
+                </label>
+                <button id="btn-guardar" class="btn-principal">Guardar</button>
+            </div>
+        </main>
 
-        <div class="subcard mt hidden" id="monthlyPanel">
-          <div class="rowBetween">
-            <h2>Salarios mensuales</h2>
-            <button id="btnSaveMonthly" class="btn" type="button">Guardar</button>
-          </div>
-          <div id="monthlyGrid" class="monthGrid mt"></div>
-          <div id="monthlyMsg" class="muted tiny mt"></div>
-        </div>
+        <section class="history">
+            <h3>Movimientos</h3>
+            <div id="lista-movimientos"></div>
+        </section>
+    </div>
 
-        <div class="subcard mt">
-          <div class="rowActions">
-            <button id="btnExport" class="btn ghost" type="button">Exportar</button>
-            <label class="btn ghost fileBtn">
-              Importar
-              <input id="importFile" type="file" accept="application/json"/>
-            </label>
-            <button id="btnResetYear" class="btn danger ghost" type="button">Reset año</button>
-          </div>
-        </div>
-      </section>
-    </section>
-  </div>
-
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-
-  <script src="app.js?v=1.2.2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script type="module" src="app.js"></script>
 </body>
 </html>
