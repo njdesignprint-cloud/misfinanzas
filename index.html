@@ -2,20 +2,20 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Finanzas Familiares</title>
-    <link rel="stylesheet" href="./style.css">
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="auth-container" class="app-container" style="display: none;">
         <header class="main-header">
             <h1>Finanzas Familia</h1>
-            <p>Ingresa para continuar</p>
+            <p>Ingresa para gestionar tus gastos</p>
         </header>
         <div class="input-card">
-            <input type="email" id="login-email" placeholder="Email">
+            <input type="email" id="login-email" placeholder="Correo electrónico">
             <input type="password" id="login-pass" placeholder="Contraseña">
-            <button id="btn-login" class="btn-principal">Entrar / Registrar</button>
+            <button id="btn-login" class="btn-principal">Entrar / Registrarse</button>
         </div>
     </div>
 
@@ -25,21 +25,37 @@
                 <input type="month" id="filtro-mes">
                 <button id="btn-logout">Salir</button>
             </div>
+            <small>Balance Mensual</small>
             <h1 id="balance-total">$0.00</h1>
         </header>
-        <div class="chart-card"><canvas id="miGrafico"></canvas></div>
-        <div class="input-card">
-            <div class="row">
-                <input type="number" id="monto" placeholder="Monto">
-                <select id="tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select>
-            </div>
-            <input type="text" id="categoria" placeholder="Categoría">
-            <button id="btn-guardar" class="btn-principal">Guardar</button>
+
+        <div class="chart-card">
+            <canvas id="miGrafico"></canvas>
         </div>
-        <div id="lista-movimientos"></div>
+
+        <main class="input-card">
+            <div class="row">
+                <input type="number" id="monto" placeholder="0.00" inputmode="decimal">
+                <select id="tipo">
+                    <option value="gasto">Gasto</option>
+                    <option value="ingreso">Ingreso</option>
+                </select>
+            </div>
+            <input type="text" id="categoria" placeholder="Categoría (Ej: Comida)">
+            <button id="btn-guardar" class="btn-principal">Guardar Transacción</button>
+        </main>
+
+        <section class="history">
+            <h3>Movimientos Recientes</h3>
+            <div id="lista-movimientos"></div>
+        </section>
     </div>
 
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" src="./app.js"></script>
+    
+    <script src="app.js"></script>
 </body>
 </html>
