@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/9/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9/firebase-auth.js";
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, where } from "https://www.gstatic.com/firebasejs/9/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9/firebase-storage.js";
 
-// 1. CONFIGURACIÓN (REEMPLAZA CON TUS DATOS)
 const firebaseConfig = {
     apiKey: "TU_API_KEY",
     authDomain: "TU_PROYECTO.firebaseapp.com",
@@ -13,48 +13,69 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
 const db = getFirestore(app);
 const storage = getStorage(app);
 
 let grafico = null;
+let userActual = null;
 
-// Establecer mes actual por defecto en el filtro
+// --- GESTIÓN DE USUARIOS ---
+onAuthStateChanged(auth, (user) => {
+    if (user) {
+        userActual = user;
+        document.getElementById('auth-container').style.display = 'none';
+        document.getElementById('main-app').style.display = 'block';
+        cargarDatos();
+    } else {
+        document.getElementById('auth-container').style.display = 'block';
+        document.getElementById('main-app').style.display = 'none';
+    }
+});
+
+document.getElementById('btn-login').onclick = async () => {
+    const email = document.getElementById('login-email').value;
+    const pass = document.getElementById('login-pass').value;
+    try {
+        await signInWithEmailAndPassword(auth, email, pass);
+    } catch {
+        await createUserWithEmailAndPassword(auth, email, pass);
+    }
+};
+
+document.getElementById('btn-logout').onclick = () => signOut(auth);
+
+// --- LÓGICA DE DATOS ---
 const filtroMes = document.getElementById('filtro-mes');
 const hoy = new Date();
 filtroMes.value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
 
-// 2. FUNCIÓN PARA EL GRÁFICO
 function renderChart(datos) {
     const ctx = document.getElementById('miGrafico').getContext('2d');
     if (grafico) grafico.destroy();
-    
     grafico = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: Object.keys(datos),
             datasets: [{
                 data: Object.values(datos),
-                backgroundColor: ['#2ecc71', '#e74c3c', '#f1c40f', '#3498db', '#9b59b6', '#e67e22'],
+                backgroundColor: ['#2ecc71', '#e74c3c', '#f1c40f', '#3498db', '#9b59b6'],
                 borderWidth: 0
             }]
         },
-        options: { 
-            responsive: true, 
-            maintainAspectRatio: false,
-            plugins: { legend: { position: 'bottom', labels: { boxWidth: 12 } } },
-            cutout: '75%' 
-        }
+        options: { maintainAspectRatio: false, cutout: '75%', plugins: { legend: { position: 'bottom' } } }
     });
 }
 
-// 3. LEER DATOS (CON FILTRO DE MES)
 function cargarDatos() {
+    if (!userActual) return;
     const [year, month] = filtroMes.value.split('-');
     const inicioMes = new Date(year, month - 1, 1);
     const finMes = new Date(year, month, 0, 23, 59, 59);
 
     const q = query(
         collection(db, "transacciones"),
+        where("uid", "==", userActual.uid), // Solo ve sus propios datos
         where("fecha", ">=", inicioMes),
         where("fecha", "<=", finMes),
         orderBy("fecha", "desc")
@@ -68,69 +89,62 @@ function cargarDatos() {
 
         snap.forEach(doc => {
             const t = doc.data();
-            const valor = Number(t.monto);
-            
-            if (t.tipo === 'ingreso') {
-                balance += valor;
-            } else {
-                balance -= valor;
-                gastosCat[t.categoria] = (gastosCat[t.categoria] || 0) + valor;
-            }
+            balance += (t.tipo === 'ingreso' ? t.monto : -t.monto);
+            if (t.tipo === 'gasto') gastosCat[t.categoria] = (gastosCat[t.categoria] || 0) + t.monto;
 
             lista.innerHTML += `
                 <div class="item">
-                    <div class="item-info">
-                        <strong>${t.categoria}</strong>
-                        <small>${t.fecha.toDate().toLocaleDateString()}</small>
-                    </div>
-                    <span class="monto-${t.tipo}">${t.tipo === 'gasto' ? '-' : '+'}$${valor.toFixed(2)}</span>
-                </div>
-            `;
+                    <div><strong>${t.categoria}</strong><br><small>${t.fecha.toDate().toLocaleDateString()}</small></div>
+                    <span class="monto-${t.tipo}">${t.tipo === 'gasto' ? '-' : '+'}$${t.monto.toFixed(2)}</span>
+                </div>`;
         });
         document.getElementById('balance-total').innerText = `$${balance.toFixed(2)}`;
         renderChart(gastosCat);
     });
 }
 
-// Escuchar cambios en el filtro de mes
-filtroMes.onchange = cargarDatos;
-cargarDatos(); // Carga inicial
-
-// 4. GUARDAR TRANSACCIÓN
+// BOTÓN GUARDAR (CORREGIDO)
 document.getElementById('btn-guardar').onclick = async () => {
-    const btn = document.getElementById('btn-guardar');
-    const monto = document.getElementById('monto').value;
+    const montoInput = document.getElementById('monto');
+    const catInput = document.getElementById('categoria');
     const tipo = document.getElementById('tipo').value;
-    const cat = document.getElementById('categoria').value;
     const foto = document.getElementById('foto').files[0];
 
-    if(!monto || !cat) return alert("Completa monto y categoría");
+    if(!montoInput.value || !catInput.value) return alert("Llena los campos");
 
+    const btn = document.getElementById('btn-guardar');
     btn.disabled = true;
     btn.innerText = "Guardando...";
 
     let url = "";
     if(foto) {
-        const sRef = ref(storage, `recibos/${Date.now()}_${foto.name}`);
+        const sRef = ref(storage, `recibos/${userActual.uid}/${Date.now()}`);
         await uploadBytes(sRef, foto);
         url = await getDownloadURL(sRef);
     }
 
     try {
         await addDoc(collection(db, "transacciones"), {
-            monto: Number(monto),
+            uid: userActual.uid,
+            monto: Number(montoInput.value),
             tipo,
-            categoria: cat.trim(),
+            categoria: catInput.value,
             reciboURL: url,
             fecha: new Date()
         });
-        document.getElementById('monto').value = "";
-        document.getElementById('categoria').value = "";
+        
+        // LIMPIAR CAMPOS DESPUÉS DE GUARDAR
+        montoInput.value = "";
+        catInput.value = "";
         document.getElementById('foto').value = "";
+        alert("Guardado correctamente");
     } catch (e) {
+        console.error(e);
         alert("Error al guardar");
     } finally {
         btn.disabled = false;
-        btn.innerText = "Guardar";
+        btn.innerText = "Guardar Transacción";
     }
 };
+
+filtroMes.onchange = cargarDatos;

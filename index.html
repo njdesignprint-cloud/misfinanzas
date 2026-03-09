@@ -3,14 +3,27 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Finanzas Familiares Pro</title>
+    <title>Finanzas Familiares</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div class="app-container">
+    <div id="auth-container" class="app-container" style="display: none;">
         <header class="main-header">
-            <div class="month-selector">
+            <h1>Bienvenido</h1>
+            <p>Inicia sesión para gestionar tus finanzas</p>
+        </header>
+        <main class="input-card">
+            <input type="email" id="login-email" placeholder="Correo electrónico">
+            <input type="password" id="login-pass" placeholder="Contraseña">
+            <button id="btn-login" class="btn-principal">Entrar / Registrarse</button>
+        </main>
+    </div>
+
+    <div id="main-app" class="app-container" style="display: none;">
+        <header class="main-header">
+            <div class="header-top">
                 <input type="month" id="filtro-mes">
+                <button id="btn-logout">Salir</button>
             </div>
             <small>Balance del Mes</small>
             <h1 id="balance-total">$0.00</h1>
@@ -28,14 +41,14 @@
                     <option value="ingreso">Ingreso</option>
                 </select>
             </div>
-            <input type="text" id="categoria" placeholder="Categoría (Comida, Renta, Salario...)">
+            <input type="text" id="categoria" placeholder="Categoría (Comida, Renta...)">
             
             <div class="actions">
                 <label class="btn-secundario">
                     📷 Recibo
                     <input type="file" id="foto" accept="image/*" capture="camera" hidden>
                 </label>
-                <button id="btn-guardar" class="btn-principal">Guardar</button>
+                <button id="btn-guardar" class="btn-principal">Guardar Transacción</button>
             </div>
         </main>
 
