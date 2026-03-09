@@ -4,11 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finanzas Familiares</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="./style.css">
 </head>
 <body>
-    <div id="loading" style="text-align:center; margin-top:50px;">Cargando sistema...</div>
-
     <div id="auth-container" class="app-container" style="display: none;">
         <header class="main-header">
             <h1>Finanzas Familia</h1>
@@ -29,27 +27,19 @@
             </div>
             <h1 id="balance-total">$0.00</h1>
         </header>
-
-        <div class="chart-card">
-            <canvas id="miGrafico"></canvas>
-        </div>
-
+        <div class="chart-card"><canvas id="miGrafico"></canvas></div>
         <div class="input-card">
             <div class="row">
                 <input type="number" id="monto" placeholder="Monto">
-                <select id="tipo">
-                    <option value="gasto">Gasto</option>
-                    <option value="ingreso">Ingreso</option>
-                </select>
+                <select id="tipo"><option value="gasto">Gasto</option><option value="ingreso">Ingreso</option></select>
             </div>
             <input type="text" id="categoria" placeholder="Categoría">
             <button id="btn-guardar" class="btn-principal">Guardar</button>
         </div>
-
         <div id="lista-movimientos"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script type="module" src="app.js"></script>
+    <script type="module" src="./app.js"></script>
 </body>
 </html>
