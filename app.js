@@ -36,21 +36,19 @@ function cargarDatos(uid) {
     db.collection("transacciones").where("uid", "==", uid)
       .where("fecha", ">=", inicio).where("fecha", "<=", fin)
       .orderBy("fecha", "desc").onSnapshot(snap => {
-        let bal = 0, datosGrafica = {}, html = "";
+        let totalIngresos = 0, totalGastos = 0, datosGrafica = {}, html = "";
         
         snap.forEach(doc => {
             const d = doc.data();
             const monto = d.monto;
             
             if(d.tipo === 'ingreso') {
-                bal += monto;
+                totalIngresos += monto;
             } else {
-                bal -= monto;
+                totalGastos += monto;
             }
             
-            // Ahora incluimos tanto ingresos como gastos en la gráfica
-            // Le añadimos el tipo al nombre para diferenciar (ej: "Sueldo (ingreso)")
-            const etiqueta = `${d.categoria} (${d.tipo})`;
+            const etiqueta = `${d.categoria} (${d.tipo === 'gasto' ? 'G' : 'I'})`;
             datosGrafica[etiqueta] = (datosGrafica[etiqueta] || 0) + monto;
 
             html += `
@@ -58,11 +56,14 @@ function cargarDatos(uid) {
                     <div><b>${d.categoria}</b><br><span class="monto-${d.tipo}">$${monto.toFixed(2)}</span></div>
                     <div>
                         <button onclick="editarDoc('${doc.id}', ${monto})" style="border:none; background:none; cursor:pointer;">✏️</button>
-                        <button class="btn-del" onclick="eliminarDoc('${doc.id}')">🗑️</button>
+                        <button onclick="eliminarDoc('${doc.id}')" style="border:none; background:none; cursor:pointer; color:#EF4444;">🗑️</button>
                     </div>
                 </div>`;
         });
-        document.getElementById('balance-total').innerText = `$${bal.toFixed(2)}`;
+
+        document.getElementById('res-ingresos').innerText = `+$${totalIngresos.toFixed(2)}`;
+        document.getElementById('res-gastos').innerText = `-$${totalGastos.toFixed(2)}`;
+        document.getElementById('balance-total').innerText = `$${(totalIngresos - totalGastos).toFixed(2)}`;
         document.getElementById('lista-movimientos').innerHTML = html;
         actualizarGrafico(datosGrafica);
     });
@@ -77,25 +78,16 @@ document.getElementById('btn-guardar').onclick = async () => {
     document.getElementById('monto').value = ""; document.getElementById('categoria').value = "";
 };
 
-window.eliminarDoc = (id) => confirm("¿Borrar?") && db.collection("transacciones").doc(id).delete();
+window.eliminarDoc = (id) => confirm("¿Deseas eliminar permanentemente?") && db.collection("transacciones").doc(id).delete();
+
 window.editarDoc = (id, monto) => {
-    const n = prompt("Nuevo monto:", monto);
+    const n = prompt("Actualizar monto:", monto);
     if(n) db.collection("transacciones").doc(id).update({ monto: Number(n) });
 };
 
 document.getElementById('btn-dark-mode').onclick = () => {
     document.body.classList.toggle('dark-mode');
     document.getElementById('btn-dark-mode').innerText = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
-};
-
-document.getElementById('btn-exportar').onclick = () => {
-    let csv = "Categoria,Tipo,Monto\n";
-    db.collection("transacciones").where("uid", "==", auth.currentUser.uid).get().then(snap => {
-        snap.forEach(doc => { const d = doc.data(); csv += `${d.categoria},${d.tipo},${d.monto}\n`; });
-        const blob = new Blob([csv], { type: 'text/csv' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'finanzas.csv'; a.click();
-    });
 };
 
 function actualizarGrafico(datos) {
@@ -107,11 +99,25 @@ function actualizarGrafico(datos) {
             labels: Object.keys(datos),
             datasets: [{ 
                 data: Object.values(datos), 
-                backgroundColor: ['#064E3B', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#EF4444', '#F87171'], 
-                borderWidth: 0 
+                // Colores profesionales y diferenciados
+                backgroundColor: [
+                    '#3B82F6', '#EF4444', '#10B981', '#F59E0B', 
+                    '#6366F1', '#EC4899', '#8B5CF6', '#F97316'
+                ], 
+                borderWidth: 2,
+                borderColor: getComputedStyle(document.body).getPropertyValue('--card')
             }]
         },
-        options: { maintainAspectRatio: false, cutout: '80%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
+        options: { 
+            maintainAspectRatio: false, 
+            cutout: '75%', 
+            plugins: { 
+                legend: { 
+                    position: 'bottom', 
+                    labels: { boxWidth: 12, padding: 15, font: { size: 11, family: 'sans-serif' }, color: getComputedStyle(document.body).getPropertyValue('--text') } 
+                } 
+            } 
+        }
     });
 }
 document.getElementById('filtro-mes').onchange = () => cargarDatos(auth.currentUser.uid);
