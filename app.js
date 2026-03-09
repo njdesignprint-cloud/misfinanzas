@@ -12,7 +12,6 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 let grafico = null;
 
-// --- CONTROL DE SESIÓN ---
 auth.onAuthStateChanged(user => {
     document.getElementById('auth-section').style.display = user ? 'none' : 'block';
     document.getElementById('app-section').style.display = user ? 'block' : 'none';
@@ -27,25 +26,6 @@ document.getElementById('btn-login').onclick = async () => {
 };
 document.getElementById('btn-logout').onclick = () => auth.signOut();
 
-// --- ESCÁNER DE RECIBOS ---
-document.getElementById('input-scan').onchange = function(e) {
-    const status = document.getElementById('scan-status');
-    status.innerText = "Leyendo datos... 🔍";
-    
-    Tesseract.recognize(e.target.files[0], 'spa').then(({ data: { text } }) => {
-        // Busca números con formato de moneda (ej: 15.00 o 1,500.00)
-        const precios = text.match(/\d+[.,]\d{2}/g);
-        if (precios) {
-            const valores = precios.map(p => parseFloat(p.replace(',', '.')));
-            document.getElementById('monto').value = Math.max(...valores);
-            status.innerText = "¡Monto detectado! ✅";
-        } else {
-            status.innerText = "No se halló monto claro. ❌";
-        }
-    }).catch(() => status.innerText = "Error al procesar imagen.");
-};
-
-// --- CARGA DE DATOS ---
 function cargarDatos(uid) {
     const filtro = document.getElementById('filtro-mes');
     if(!filtro.value) filtro.value = new Date().toISOString().slice(0, 7);
@@ -56,27 +36,38 @@ function cargarDatos(uid) {
     db.collection("transacciones").where("uid", "==", uid)
       .where("fecha", ">=", inicio).where("fecha", "<=", fin)
       .orderBy("fecha", "desc").onSnapshot(snap => {
-        let bal = 0, cats = {}, html = "";
+        let bal = 0, datosGrafica = {}, html = "";
+        
         snap.forEach(doc => {
             const d = doc.data();
-            bal += (d.tipo === 'ingreso' ? d.monto : -d.monto);
-            if(d.tipo === 'gasto') cats[d.categoria] = (cats[d.categoria] || 0) + d.monto;
+            const monto = d.monto;
+            
+            if(d.tipo === 'ingreso') {
+                bal += monto;
+            } else {
+                bal -= monto;
+            }
+            
+            // Ahora incluimos tanto ingresos como gastos en la gráfica
+            // Le añadimos el tipo al nombre para diferenciar (ej: "Sueldo (ingreso)")
+            const etiqueta = `${d.categoria} (${d.tipo})`;
+            datosGrafica[etiqueta] = (datosGrafica[etiqueta] || 0) + monto;
+
             html += `
                 <div class="item">
-                    <div><b>${d.categoria}</b><br><span class="monto-${d.tipo}">$${d.monto.toFixed(2)}</span></div>
+                    <div><b>${d.categoria}</b><br><span class="monto-${d.tipo}">$${monto.toFixed(2)}</span></div>
                     <div>
-                        <button onclick="editarDoc('${doc.id}', ${d.monto})" style="border:none; background:none; cursor:pointer; font-size:1.1rem">✏️</button>
+                        <button onclick="editarDoc('${doc.id}', ${monto})" style="border:none; background:none; cursor:pointer;">✏️</button>
                         <button class="btn-del" onclick="eliminarDoc('${doc.id}')">🗑️</button>
                     </div>
                 </div>`;
         });
         document.getElementById('balance-total').innerText = `$${bal.toFixed(2)}`;
         document.getElementById('lista-movimientos').innerHTML = html;
-        actualizarGrafico(cats);
+        actualizarGrafico(datosGrafica);
     });
 }
 
-// --- GUARDAR Y EXTRAS ---
 document.getElementById('btn-guardar').onclick = async () => {
     const m = document.getElementById('monto').value, c = document.getElementById('categoria').value, t = document.getElementById('tipo').value;
     if(!m || !c) return alert("Llena todos los campos");
@@ -84,20 +75,17 @@ document.getElementById('btn-guardar').onclick = async () => {
         uid: auth.currentUser.uid, monto: Number(m), tipo: t, categoria: c, fecha: firebase.firestore.FieldValue.serverTimestamp()
     });
     document.getElementById('monto').value = ""; document.getElementById('categoria').value = "";
-    document.getElementById('scan-status').innerText = "";
 };
 
-window.eliminarDoc = (id) => confirm("¿Eliminar este movimiento?") && db.collection("transacciones").doc(id).delete();
-
+window.eliminarDoc = (id) => confirm("¿Borrar?") && db.collection("transacciones").doc(id).delete();
 window.editarDoc = (id, monto) => {
-    const n = prompt("Actualizar monto:", monto);
+    const n = prompt("Nuevo monto:", monto);
     if(n) db.collection("transacciones").doc(id).update({ monto: Number(n) });
 };
 
 document.getElementById('btn-dark-mode').onclick = () => {
     document.body.classList.toggle('dark-mode');
-    const isDark = document.body.classList.contains('dark-mode');
-    document.getElementById('btn-dark-mode').innerText = isDark ? '☀️' : '🌙';
+    document.getElementById('btn-dark-mode').innerText = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
 };
 
 document.getElementById('btn-exportar').onclick = () => {
@@ -106,7 +94,7 @@ document.getElementById('btn-exportar').onclick = () => {
         snap.forEach(doc => { const d = doc.data(); csv += `${d.categoria},${d.tipo},${d.monto}\n`; });
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'reporte_gastos.csv'; a.click();
+        const a = document.createElement('a'); a.href = url; a.download = 'finanzas.csv'; a.click();
     });
 };
 
@@ -117,10 +105,13 @@ function actualizarGrafico(datos) {
         type: 'doughnut',
         data: {
             labels: Object.keys(datos),
-            datasets: [{ data: Object.values(datos), backgroundColor: ['#064E3B', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0'], borderWidth: 0 }]
+            datasets: [{ 
+                data: Object.values(datos), 
+                backgroundColor: ['#064E3B', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0', '#EF4444', '#F87171'], 
+                borderWidth: 0 
+            }]
         },
-        options: { maintainAspectRatio: false, cutout: '80%', plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.body).getPropertyValue('--text'), font: { size: 10 } } } } }
+        options: { maintainAspectRatio: false, cutout: '80%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
     });
 }
-
 document.getElementById('filtro-mes').onchange = () => cargarDatos(auth.currentUser.uid);

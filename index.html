@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>Finanzas Elite</title>
     <link rel="stylesheet" href="style.css">
-    <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div id="auth-section" class="app-container" style="display: none;">
@@ -39,12 +38,6 @@
         </div>
 
         <div class="input-card">
-            <label for="input-scan" class="btn-scan">
-                📷 Escanear Recibo
-                <input type="file" id="input-scan" accept="image/*" capture="camera" style="display:none">
-            </label>
-            <div id="scan-status"></div>
-
             <div class="row">
                 <input type="number" id="monto" placeholder="0.00" step="0.01">
                 <select id="tipo">
@@ -52,7 +45,7 @@
                     <option value="ingreso">Ingreso</option>
                 </select>
             </div>
-            <input type="text" id="categoria" placeholder="Categoría (Ej: Super, Renta)">
+            <input type="text" id="categoria" placeholder="Categoría (Ej: Sueldo, Super, Renta)">
             <button id="btn-guardar" class="btn-principal">Guardar Registro</button>
             <button id="btn-exportar" class="btn-secundario">📥 Reporte Excel (CSV)</button>
         </div>

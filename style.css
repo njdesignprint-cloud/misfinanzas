@@ -1,8 +1,8 @@
 :root {
     --bg: #F8FAFC;
     --card: #ffffff;
-    --primary: #064E3B; /* Verde Bosque Premium */
-    --accent: #10B981;  /* Verde Esmeralda */
+    --primary: #064E3B; 
+    --accent: #10B981;  
     --text: #0F172A;
     --danger: #E11D48;
     --border: #E2E8F0;
@@ -17,36 +17,20 @@ body.dark-mode {
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'Inter', system-ui, sans-serif; display: flex; justify-content: center; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; justify-content: center; }
 
 .app-container { width: 100%; max-width: 480px; padding: 15px; }
 
-/* Tarjeta de Balance con botón flotante */
 .balance-card {
-    background: var(--card);
-    padding: 30px;
-    border-radius: 28px;
-    text-align: center;
-    position: relative;
-    border: 1px solid var(--border);
-    margin-bottom: 20px;
-    box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
+    background: var(--card); padding: 30px; border-radius: 28px;
+    text-align: center; position: relative; border: 1px solid var(--border);
+    margin-bottom: 20px; box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05);
 }
 
 .toggle-theme {
-    position: absolute;
-    top: 15px;
-    right: 15px;
-    background: var(--bg);
-    border: 1px solid var(--border);
-    width: 40px;
-    height: 40px;
-    border-radius: 50%;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 1.1rem;
+    position: absolute; top: 15px; right: 15px; background: var(--bg);
+    border: 1px solid var(--border); width: 40px; height: 40px;
+    border-radius: 50%; cursor: pointer; display: flex; align-items: center; justify-content: center;
 }
 
 #balance-total { font-size: 3rem; font-weight: 800; color: var(--primary); letter-spacing: -2px; }
@@ -59,14 +43,6 @@ body { background: var(--bg); color: var(--text); font-family: 'Inter', system-u
     margin-bottom: 15px; border: 1px solid var(--border);
 }
 
-.btn-scan {
-    display: block; background: var(--bg); border: 2px dashed var(--accent);
-    padding: 12px; border-radius: 15px; cursor: pointer; text-align: center;
-    color: var(--accent); font-weight: 600; margin-bottom: 15px;
-}
-
-#scan-status { font-size: 12px; text-align: center; margin-top: -10px; margin-bottom: 10px; color: var(--accent); }
-
 .row { display: flex; gap: 10px; margin-bottom: 10px; }
 input, select {
     padding: 14px; border-radius: 12px; border: 1px solid var(--border);
@@ -75,7 +51,7 @@ input, select {
 
 .btn-principal {
     width: 100%; background: var(--primary); color: white; border: none;
-    padding: 16px; border-radius: 16px; font-weight: 700; cursor: pointer; font-size: 16px;
+    padding: 16px; border-radius: 16px; font-weight: 700; cursor: pointer;
 }
 
 .btn-secundario {
@@ -83,7 +59,7 @@ input, select {
     padding: 12px; border-radius: 16px; margin-top: 10px; cursor: pointer; color: var(--text);
 }
 
-.item { display: flex; justify-content: space-between; align-items: center; border-radius: 20px; }
+.item { display: flex; justify-content: space-between; align-items: center; }
 .btn-del { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 1.2rem; }
 .monto-gasto { color: var(--danger); font-weight: 700; }
 .monto-ingreso { color: var(--accent); font-weight: 700; }
