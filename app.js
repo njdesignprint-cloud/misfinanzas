@@ -3,6 +3,7 @@ import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, on
 import { getFirestore, collection, addDoc, query, orderBy, onSnapshot, where } from "https://www.gstatic.com/firebasejs/9/firebase-firestore.js";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/9/firebase-storage.js";
 
+// 1. REEMPLAZA ESTO CON TUS CREDENCIALES REALES
 const firebaseConfig = {
     apiKey: "TU_API_KEY",
     authDomain: "TU_PROYECTO.firebaseapp.com",
@@ -12,46 +13,61 @@ const firebaseConfig = {
     appId: "TU_APP_ID"
 };
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getFirestore(app);
-const storage = getStorage(app);
+// Inicializar
+let app, auth, db, storage;
+try {
+    app = initializeApp(firebaseConfig);
+    auth = getAuth(app);
+    db = getFirestore(app);
+    storage = getStorage(app);
+} catch (error) {
+    alert("Error de configuración de Firebase: " + error.message);
+}
 
 let grafico = null;
 let userActual = null;
 
-// --- GESTIÓN DE USUARIOS ---
+// GESTIÓN DE INTERFAZ
+const authDiv = document.getElementById('auth-container');
+const appDiv = document.getElementById('main-app');
+
 onAuthStateChanged(auth, (user) => {
     if (user) {
         userActual = user;
-        document.getElementById('auth-container').style.display = 'none';
-        document.getElementById('main-app').style.display = 'block';
+        authDiv.style.display = 'none';
+        appDiv.style.display = 'block';
         cargarDatos();
     } else {
-        document.getElementById('auth-container').style.display = 'block';
-        document.getElementById('main-app').style.display = 'none';
+        userActual = null;
+        authDiv.style.display = 'block';
+        appDiv.style.display = 'none';
     }
 });
 
+// LOGIN / REGISTRO
 document.getElementById('btn-login').onclick = async () => {
     const email = document.getElementById('login-email').value;
     const pass = document.getElementById('login-pass').value;
+    if(!email || !pass) return alert("Ingresa datos");
+    
     try {
         await signInWithEmailAndPassword(auth, email, pass);
-    } catch {
-        await createUserWithEmailAndPassword(auth, email, pass);
+    } catch (error) {
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential') {
+            try {
+                await createUserWithEmailAndPassword(auth, email, pass);
+                alert("Cuenta creada y sesión iniciada");
+            } catch (err2) { alert("Error al crear cuenta: " + err2.message); }
+        } else { alert("Error: " + error.message); }
     }
 };
 
 document.getElementById('btn-logout').onclick = () => signOut(auth);
 
-// --- LÓGICA DE DATOS ---
-const filtroMes = document.getElementById('filtro-mes');
-const hoy = new Date();
-filtroMes.value = `${hoy.getFullYear()}-${String(hoy.getMonth() + 1).padStart(2, '0')}`;
-
+// GRÁFICO
 function renderChart(datos) {
-    const ctx = document.getElementById('miGrafico').getContext('2d');
+    const ctx = document.getElementById('miGrafico');
+    if (!ctx) return;
     if (grafico) grafico.destroy();
     grafico = new Chart(ctx, {
         type: 'doughnut',
@@ -67,15 +83,17 @@ function renderChart(datos) {
     });
 }
 
+// CARGAR DATOS
 function cargarDatos() {
     if (!userActual) return;
+    const filtroMes = document.getElementById('filtro-mes');
     const [year, month] = filtroMes.value.split('-');
     const inicioMes = new Date(year, month - 1, 1);
     const finMes = new Date(year, month, 0, 23, 59, 59);
 
     const q = query(
         collection(db, "transacciones"),
-        where("uid", "==", userActual.uid), // Solo ve sus propios datos
+        where("uid", "==", userActual.uid),
         where("fecha", ">=", inicioMes),
         where("fecha", "<=", finMes),
         orderBy("fecha", "desc")
@@ -89,62 +107,59 @@ function cargarDatos() {
 
         snap.forEach(doc => {
             const t = doc.data();
-            balance += (t.tipo === 'ingreso' ? t.monto : -t.monto);
-            if (t.tipo === 'gasto') gastosCat[t.categoria] = (gastosCat[t.categoria] || 0) + t.monto;
+            const val = Number(t.monto);
+            balance += (t.tipo === 'ingreso' ? val : -val);
+            if (t.tipo === 'gasto') gastosCat[t.categoria] = (gastosCat[t.categoria] || 0) + val;
 
             lista.innerHTML += `
                 <div class="item">
                     <div><strong>${t.categoria}</strong><br><small>${t.fecha.toDate().toLocaleDateString()}</small></div>
-                    <span class="monto-${t.tipo}">${t.tipo === 'gasto' ? '-' : '+'}$${t.monto.toFixed(2)}</span>
+                    <span class="monto-${t.tipo}">${t.tipo === 'gasto' ? '-' : '+'}$${val.toFixed(2)}</span>
                 </div>`;
         });
         document.getElementById('balance-total').innerText = `$${balance.toFixed(2)}`;
         renderChart(gastosCat);
+    }, (error) => {
+        console.error("Error en Snapshot:", error);
+        if(error.code === "failed-precondition") {
+            alert("Falta crear un índice en Firebase. Revisa la consola (F12) y haz clic en el link azul.");
+        }
     });
 }
 
-// BOTÓN GUARDAR (CORREGIDO)
+// BOTÓN GUARDAR
 document.getElementById('btn-guardar').onclick = async () => {
-    const montoInput = document.getElementById('monto');
-    const catInput = document.getElementById('categoria');
+    const m = document.getElementById('monto');
+    const c = document.getElementById('categoria');
     const tipo = document.getElementById('tipo').value;
-    const foto = document.getElementById('foto').files[0];
+    const f = document.getElementById('foto').files[0];
 
-    if(!montoInput.value || !catInput.value) return alert("Llena los campos");
+    if(!m.value || !c.value) return alert("Llena los campos");
 
     const btn = document.getElementById('btn-guardar');
-    btn.disabled = true;
-    btn.innerText = "Guardando...";
-
-    let url = "";
-    if(foto) {
-        const sRef = ref(storage, `recibos/${userActual.uid}/${Date.now()}`);
-        await uploadBytes(sRef, foto);
-        url = await getDownloadURL(sRef);
-    }
+    btn.disabled = true; btn.innerText = "Guardando...";
 
     try {
+        let url = "";
+        if(f) {
+            const sRef = ref(storage, `recibos/${userActual.uid}/${Date.now()}`);
+            await uploadBytes(sRef, f);
+            url = await getDownloadURL(sRef);
+        }
+
         await addDoc(collection(db, "transacciones"), {
             uid: userActual.uid,
-            monto: Number(montoInput.value),
+            monto: Number(m.value),
             tipo,
-            categoria: catInput.value,
+            categoria: c.value,
             reciboURL: url,
             fecha: new Date()
         });
         
-        // LIMPIAR CAMPOS DESPUÉS DE GUARDAR
-        montoInput.value = "";
-        catInput.value = "";
-        document.getElementById('foto').value = "";
-        alert("Guardado correctamente");
-    } catch (e) {
-        console.error(e);
-        alert("Error al guardar");
-    } finally {
-        btn.disabled = false;
-        btn.innerText = "Guardar Transacción";
-    }
+        m.value = ""; c.value = ""; 
+        alert("¡Guardado!");
+    } catch (e) { alert("Error al guardar: " + e.message); }
+    finally { btn.disabled = false; btn.innerText = "Guardar Transacción"; }
 };
 
-filtroMes.onchange = cargarDatos;
+document.getElementById('filtro-mes').onchange = cargarDatos;
