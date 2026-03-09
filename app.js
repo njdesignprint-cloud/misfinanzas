@@ -15,16 +15,13 @@ const db = firebase.firestore();
 
 let grafico = null;
 
-// Referencias UI
 const authSection = document.getElementById('auth-section');
 const appSection = document.getElementById('app-section');
 const filtroMes = document.getElementById('filtro-mes');
 
-// Poner mes actual por defecto
 const fechaHoy = new Date();
 filtroMes.value = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
 
-// --- ESTADO DE LA SESIÓN ---
 auth.onAuthStateChanged(user => {
     if (user) {
         authSection.style.display = 'none';
@@ -36,16 +33,13 @@ auth.onAuthStateChanged(user => {
     }
 });
 
-// --- LOGIN Y REGISTRO ---
 document.getElementById('btn-login').onclick = async () => {
     const email = document.getElementById('email').value;
     const pass = document.getElementById('pass').value;
     if(!email || !pass) return alert("Ingresa datos");
-
     try {
         await auth.signInWithEmailAndPassword(email, pass);
     } catch (error) {
-        // Si el usuario no existe, lo crea automáticamente
         try {
             await auth.createUserWithEmailAndPassword(email, pass);
         } catch (err) { alert("Error: " + err.message); }
@@ -54,11 +48,9 @@ document.getElementById('btn-login').onclick = async () => {
 
 document.getElementById('btn-logout').onclick = () => auth.signOut();
 
-// --- GRÁFICO ---
 function actualizarGrafico(datos) {
     const ctx = document.getElementById('miGrafico').getContext('2d');
     if (grafico) grafico.destroy();
-    
     grafico = new Chart(ctx, {
         type: 'doughnut',
         data: {
@@ -73,11 +65,12 @@ function actualizarGrafico(datos) {
     });
 }
 
-// --- CARGAR DATOS ---
 function cargarDatos(uid) {
     const [y, m] = filtroMes.value.split('-');
-    const fechaInicio = new firebase.firestore.Timestamp.fromDate(new Date(y, m - 1, 1));
-    const fechaFin = new firebase.firestore.Timestamp.fromDate(new Date(y, m, 0, 23, 59, 59));
+    
+    // CORRECCIÓN AQUÍ: Se quita el "new"
+    const fechaInicio = firebase.firestore.Timestamp.fromDate(new Date(y, m - 1, 1));
+    const fechaFin = firebase.firestore.Timestamp.fromDate(new Date(y, m, 0, 23, 59, 59));
 
     db.collection("transacciones")
         .where("uid", "==", uid)
@@ -111,11 +104,10 @@ function cargarDatos(uid) {
             document.getElementById('balance-total').innerText = `$${balance.toFixed(2)}`;
             actualizarGrafico(gastosPorCategoria);
         }, (err) => {
-            console.error(err);
+            console.error("Error en Snapshot: ", err);
         });
 }
 
-// --- GUARDAR GASTO/INGRESO ---
 document.getElementById('btn-guardar').onclick = async () => {
     const monto = document.getElementById('monto').value;
     const cat = document.getElementById('categoria').value;
