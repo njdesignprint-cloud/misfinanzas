@@ -2,21 +2,23 @@
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Finanzas Familiares</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+    <div id="loading" style="text-align:center; margin-top:50px;">Cargando sistema...</div>
+
     <div id="auth-container" class="app-container" style="display: none;">
         <header class="main-header">
-            <h1>Bienvenido</h1>
-            <p>Inicia sesión para gestionar tus finanzas</p>
+            <h1>Finanzas Familia</h1>
+            <p>Ingresa para continuar</p>
         </header>
-        <main class="input-card">
-            <input type="email" id="login-email" placeholder="Correo electrónico">
+        <div class="input-card">
+            <input type="email" id="login-email" placeholder="Email">
             <input type="password" id="login-pass" placeholder="Contraseña">
-            <button id="btn-login" class="btn-principal">Entrar / Registrarse</button>
-        </main>
+            <button id="btn-login" class="btn-principal">Entrar / Registrar</button>
+        </div>
     </div>
 
     <div id="main-app" class="app-container" style="display: none;">
@@ -25,7 +27,6 @@
                 <input type="month" id="filtro-mes">
                 <button id="btn-logout">Salir</button>
             </div>
-            <small>Balance del Mes</small>
             <h1 id="balance-total">$0.00</h1>
         </header>
 
@@ -33,29 +34,19 @@
             <canvas id="miGrafico"></canvas>
         </div>
 
-        <main class="input-card">
+        <div class="input-card">
             <div class="row">
-                <input type="number" id="monto" placeholder="0.00" inputmode="decimal">
+                <input type="number" id="monto" placeholder="Monto">
                 <select id="tipo">
                     <option value="gasto">Gasto</option>
                     <option value="ingreso">Ingreso</option>
                 </select>
             </div>
-            <input type="text" id="categoria" placeholder="Categoría (Comida, Renta...)">
-            
-            <div class="actions">
-                <label class="btn-secundario">
-                    📷 Recibo
-                    <input type="file" id="foto" accept="image/*" capture="camera" hidden>
-                </label>
-                <button id="btn-guardar" class="btn-principal">Guardar Transacción</button>
-            </div>
-        </main>
+            <input type="text" id="categoria" placeholder="Categoría">
+            <button id="btn-guardar" class="btn-principal">Guardar</button>
+        </div>
 
-        <section class="history">
-            <h3>Movimientos</h3>
-            <div id="lista-movimientos"></div>
-        </section>
+        <div id="lista-movimientos"></div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
