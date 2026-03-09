@@ -12,11 +12,11 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 let grafico = null;
 
-// --- LOGIN Y SESIÓN ---
+// --- CONTROL DE SESIÓN ---
 auth.onAuthStateChanged(user => {
     document.getElementById('auth-section').style.display = user ? 'none' : 'block';
     document.getElementById('app-section').style.display = user ? 'block' : 'none';
-    if (user) cargarDatos(user.uid);
+    if(user) cargarDatos(user.uid);
 });
 
 document.getElementById('btn-login').onclick = async () => {
@@ -27,29 +27,28 @@ document.getElementById('btn-login').onclick = async () => {
 };
 document.getElementById('btn-logout').onclick = () => auth.signOut();
 
-// --- ESCANEO DE RECIBOS (OCR) ---
+// --- ESCÁNER DE RECIBOS ---
 document.getElementById('input-scan').onchange = function(e) {
     const status = document.getElementById('scan-status');
-    status.innerText = "Leyendo recibo... ⏳";
+    status.innerText = "Leyendo datos... 🔍";
     
-    Tesseract.recognize(e.target.files[0], 'eng').then(({ data: { text } }) => {
-        // Buscamos números con decimales (precios)
-        const matches = text.match(/\d+\.\d{2}/g);
-        if (matches) {
-            const mayorMonto = Math.max(...matches.map(Number));
-            document.getElementById('monto').value = mayorMonto;
+    Tesseract.recognize(e.target.files[0], 'spa').then(({ data: { text } }) => {
+        // Busca números con formato de moneda (ej: 15.00 o 1,500.00)
+        const precios = text.match(/\d+[.,]\d{2}/g);
+        if (precios) {
+            const valores = precios.map(p => parseFloat(p.replace(',', '.')));
+            document.getElementById('monto').value = Math.max(...valores);
             status.innerText = "¡Monto detectado! ✅";
         } else {
-            status.innerText = "No se halló el monto. ❌";
+            status.innerText = "No se halló monto claro. ❌";
         }
-    });
+    }).catch(() => status.innerText = "Error al procesar imagen.");
 };
 
-// --- CRUD Y DATOS ---
+// --- CARGA DE DATOS ---
 function cargarDatos(uid) {
     const filtro = document.getElementById('filtro-mes');
     if(!filtro.value) filtro.value = new Date().toISOString().slice(0, 7);
-    
     const [y, m] = filtro.value.split('-');
     const inicio = firebase.firestore.Timestamp.fromDate(new Date(y, m-1, 1));
     const fin = firebase.firestore.Timestamp.fromDate(new Date(y, m, 0, 23, 59));
@@ -65,8 +64,8 @@ function cargarDatos(uid) {
             html += `
                 <div class="item">
                     <div><b>${d.categoria}</b><br><span class="monto-${d.tipo}">$${d.monto.toFixed(2)}</span></div>
-                    <div class="actions">
-                        <button onclick="editarDoc('${doc.id}', ${d.monto})">✏️</button>
+                    <div>
+                        <button onclick="editarDoc('${doc.id}', ${d.monto})" style="border:none; background:none; cursor:pointer; font-size:1.1rem">✏️</button>
                         <button class="btn-del" onclick="eliminarDoc('${doc.id}')">🗑️</button>
                     </div>
                 </div>`;
@@ -77,24 +76,29 @@ function cargarDatos(uid) {
     });
 }
 
+// --- GUARDAR Y EXTRAS ---
 document.getElementById('btn-guardar').onclick = async () => {
     const m = document.getElementById('monto').value, c = document.getElementById('categoria').value, t = document.getElementById('tipo').value;
-    if(!m || !c) return alert("Faltan datos");
+    if(!m || !c) return alert("Llena todos los campos");
     await db.collection("transacciones").add({
         uid: auth.currentUser.uid, monto: Number(m), tipo: t, categoria: c, fecha: firebase.firestore.FieldValue.serverTimestamp()
     });
     document.getElementById('monto').value = ""; document.getElementById('categoria').value = "";
+    document.getElementById('scan-status').innerText = "";
 };
 
-// --- AUXILIARES (Borrar, Editar, Exportar, Tema) ---
-window.eliminarDoc = (id) => confirm("¿Borrar?") && db.collection("transacciones").doc(id).delete();
+window.eliminarDoc = (id) => confirm("¿Eliminar este movimiento?") && db.collection("transacciones").doc(id).delete();
 
 window.editarDoc = (id, monto) => {
-    const n = prompt("Nuevo monto:", monto);
+    const n = prompt("Actualizar monto:", monto);
     if(n) db.collection("transacciones").doc(id).update({ monto: Number(n) });
 };
 
-document.getElementById('btn-dark-mode').onclick = () => document.body.classList.toggle('dark-mode');
+document.getElementById('btn-dark-mode').onclick = () => {
+    document.body.classList.toggle('dark-mode');
+    const isDark = document.body.classList.contains('dark-mode');
+    document.getElementById('btn-dark-mode').innerText = isDark ? '☀️' : '🌙';
+};
 
 document.getElementById('btn-exportar').onclick = () => {
     let csv = "Categoria,Tipo,Monto\n";
@@ -102,7 +106,7 @@ document.getElementById('btn-exportar').onclick = () => {
         snap.forEach(doc => { const d = doc.data(); csv += `${d.categoria},${d.tipo},${d.monto}\n`; });
         const blob = new Blob([csv], { type: 'text/csv' });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a'); a.href = url; a.download = 'finanzas.csv'; a.click();
+        const a = document.createElement('a'); a.href = url; a.download = 'reporte_gastos.csv'; a.click();
     });
 };
 
@@ -115,7 +119,8 @@ function actualizarGrafico(datos) {
             labels: Object.keys(datos),
             datasets: [{ data: Object.values(datos), backgroundColor: ['#064E3B', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0'], borderWidth: 0 }]
         },
-        options: { maintainAspectRatio: false, cutout: '80%' }
+        options: { maintainAspectRatio: false, cutout: '80%', plugins: { legend: { position: 'bottom', labels: { color: getComputedStyle(document.body).getPropertyValue('--text'), font: { size: 10 } } } } }
     });
 }
+
 document.getElementById('filtro-mes').onchange = () => cargarDatos(auth.currentUser.uid);

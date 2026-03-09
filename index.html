@@ -3,32 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Finanzas Pro</title>
+    <title>Finanzas Elite</title>
     <link rel="stylesheet" href="style.css">
     <script src="https://unpkg.com/tesseract.js@v2.1.0/dist/tesseract.min.js"></script>
 </head>
 <body>
     <div id="auth-section" class="app-container" style="display: none;">
         <header class="main-header">
-            <h1>Finanzas Familia</h1>
-            <p>Tu dinero, bajo control.</p>
+            <h1>Finanzas Pro</h1>
+            <p>Elegancia en tu gestión diaria</p>
         </header>
         <div class="input-card">
-            <input type="email" id="email" placeholder="Correo electrónico">
+            <input type="email" id="email" placeholder="Email">
             <input type="password" id="pass" placeholder="Contraseña">
-            <button id="btn-login" class="btn-principal">Comenzar</button>
+            <button id="btn-login" class="btn-principal">Acceder</button>
         </div>
     </div>
 
     <div id="app-section" class="app-container" style="display: none;">
         <header class="main-header">
             <div class="header-top">
-                <button id="btn-dark-mode">🌙</button>
                 <input type="month" id="filtro-mes">
                 <button id="btn-logout">Salir</button>
             </div>
-            <small>Balance Neto</small>
-            <h1 id="balance-total">$0.00</h1>
+            
+            <div class="balance-card">
+                <button id="btn-dark-mode" class="toggle-theme">🌙</button>
+                <small>BALANCE NETO</small>
+                <h1 id="balance-total">$0.00</h1>
+            </div>
         </header>
 
         <div class="chart-card">
@@ -36,13 +39,11 @@
         </div>
 
         <div class="input-card">
-            <div class="scan-wrapper">
-                <label for="input-scan" class="btn-scan">
-                    📷 Escanear Recibo
-                    <input type="file" id="input-scan" accept="image/*" capture="camera" style="display:none">
-                </label>
-                <small id="scan-status"></small>
-            </div>
+            <label for="input-scan" class="btn-scan">
+                📷 Escanear Recibo
+                <input type="file" id="input-scan" accept="image/*" capture="camera" style="display:none">
+            </label>
+            <div id="scan-status"></div>
 
             <div class="row">
                 <input type="number" id="monto" placeholder="0.00" step="0.01">
@@ -51,12 +52,12 @@
                     <option value="ingreso">Ingreso</option>
                 </select>
             </div>
-            <input type="text" id="categoria" placeholder="Categoría (Ej: Supermercado)">
-            <button id="btn-guardar" class="btn-principal">Guardar Movimiento</button>
-            <button id="btn-exportar" class="btn-secundario">📥 Descargar CSV</button>
+            <input type="text" id="categoria" placeholder="Categoría (Ej: Super, Renta)">
+            <button id="btn-guardar" class="btn-principal">Guardar Registro</button>
+            <button id="btn-exportar" class="btn-secundario">📥 Reporte Excel (CSV)</button>
         </div>
 
-        <div id="lista-movimientos" class="history"></div>
+        <div id="lista-movimientos"></div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
