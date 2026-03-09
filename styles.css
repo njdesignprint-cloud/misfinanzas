@@ -1,15 +1,15 @@
 :root {
-    --primario: #2ecc71;
-    --gasto: #e74c3c;
-    --oscuro: #1a1a1a;
-    --fondo: #f4f7f6;
+    --p: #2ecc71;
+    --g: #e74c3c;
+    --o: #1a1a1a;
+    --f: #f4f7f6;
 }
 
 * { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
-    background: var(--fondo);
-    font-family: 'Segoe UI', system-ui, sans-serif;
+    background: var(--f);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     display: flex;
     justify-content: center;
 }
@@ -20,58 +20,62 @@ body {
     padding: 20px;
 }
 
-.main-header { text-align: center; padding: 30px 0; }
-.header-top { display: flex; justify-content: space-between; margin-bottom: 10px; }
-#balance-total { font-size: 3rem; font-weight: bold; }
+.main-header { text-align: center; padding: 20px 0; }
+.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+#balance-total { font-size: clamp(2.5rem, 10vw, 3.5rem); font-weight: 800; letter-spacing: -1px; }
 
 .chart-card {
     background: white;
     padding: 20px;
-    border-radius: 20px;
+    border-radius: 24px;
     margin-bottom: 20px;
     height: 250px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.03);
 }
 
 .input-card {
     background: white;
-    padding: 20px;
-    border-radius: 20px;
+    padding: 25px;
+    border-radius: 24px;
     display: flex;
     flex-direction: column;
     gap: 15px;
-    box-shadow: 0 4px 15px rgba(0,0,0,0.05);
+    box-shadow: 0 10px 25px rgba(0,0,0,0.03);
 }
 
 .row { display: flex; gap: 10px; }
-input, select {
-    padding: 15px;
-    border: 1px solid #eee;
-    border-radius: 12px;
+input, select, button {
+    padding: 16px;
+    border-radius: 14px;
+    border: 1px solid #efefef;
     font-size: 16px;
-    width: 100%;
     outline: none;
+    transition: all 0.2s;
 }
 
+input:focus { border-color: var(--o); }
+
 .btn-principal {
-    background: var(--oscuro);
+    background: var(--o);
     color: white;
-    border: none;
-    padding: 16px;
-    border-radius: 12px;
     font-weight: bold;
     cursor: pointer;
+    border: none;
 }
+
+.btn-principal:active { transform: scale(0.98); }
 
 .item {
     background: white;
-    padding: 15px;
-    border-radius: 15px;
-    margin-top: 10px;
+    padding: 18px;
+    border-radius: 18px;
+    margin-top: 12px;
     display: flex;
     justify-content: space-between;
     align-items: center;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.01);
 }
 
-.monto-gasto { color: var(--gasto); font-weight: bold; }
-.monto-ingreso { color: var(--primario); font-weight: bold; }
+.monto-gasto { color: var(--g); font-weight: bold; }
+.monto-ingreso { color: var(--p); font-weight: bold; }
+#btn-logout { padding: 8px 15px; font-size: 12px; background: #eee; border: none; }

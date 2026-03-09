@@ -3,29 +3,29 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Finanzas Familiares</title>
+    <title>Mis Finanzas Familiares</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <div id="auth-container" class="app-container" style="display: none;">
+    <div id="auth-section" class="app-container" style="display: none;">
         <header class="main-header">
             <h1>Finanzas Familia</h1>
-            <p>Ingresa para gestionar tus gastos</p>
+            <p>Inicia sesión o regístrate</p>
         </header>
         <div class="input-card">
-            <input type="email" id="login-email" placeholder="Correo electrónico">
-            <input type="password" id="login-pass" placeholder="Contraseña">
-            <button id="btn-login" class="btn-principal">Entrar / Registrarse</button>
+            <input type="email" id="email" placeholder="Correo electrónico">
+            <input type="password" id="pass" placeholder="Contraseña">
+            <button id="btn-login" class="btn-principal">Entrar / Registrar</button>
         </div>
     </div>
 
-    <div id="main-app" class="app-container" style="display: none;">
+    <div id="app-section" class="app-container" style="display: none;">
         <header class="main-header">
             <div class="header-top">
                 <input type="month" id="filtro-mes">
                 <button id="btn-logout">Salir</button>
             </div>
-            <small>Balance Mensual</small>
+            <small>Balance del Mes</small>
             <h1 id="balance-total">$0.00</h1>
         </header>
 
@@ -33,7 +33,7 @@
             <canvas id="miGrafico"></canvas>
         </div>
 
-        <main class="input-card">
+        <div class="input-card">
             <div class="row">
                 <input type="number" id="monto" placeholder="0.00" inputmode="decimal">
                 <select id="tipo">
@@ -41,19 +41,16 @@
                     <option value="ingreso">Ingreso</option>
                 </select>
             </div>
-            <input type="text" id="categoria" placeholder="Categoría (Ej: Comida)">
+            <input type="text" id="categoria" placeholder="Categoría (Ej: Comida, Salario)">
             <button id="btn-guardar" class="btn-principal">Guardar Transacción</button>
-        </main>
+        </div>
 
-        <section class="history">
-            <h3>Movimientos Recientes</h3>
-            <div id="lista-movimientos"></div>
-        </section>
+        <div id="lista-movimientos" class="history"></div>
     </div>
 
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
     <script src="app.js"></script>
