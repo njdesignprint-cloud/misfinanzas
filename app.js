@@ -7,125 +7,115 @@ const firebaseConfig = {
     appId: "1:998483559442:web:435dced19e19a884b984cb"
 };
 
-// Inicialización
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
-
 let grafico = null;
 
-const authSection = document.getElementById('auth-section');
-const appSection = document.getElementById('app-section');
-const filtroMes = document.getElementById('filtro-mes');
-
-const fechaHoy = new Date();
-filtroMes.value = `${fechaHoy.getFullYear()}-${String(fechaHoy.getMonth() + 1).padStart(2, '0')}`;
-
+// --- LOGIN Y SESIÓN ---
 auth.onAuthStateChanged(user => {
-    if (user) {
-        authSection.style.display = 'none';
-        appSection.style.display = 'block';
-        cargarDatos(user.uid);
-    } else {
-        authSection.style.display = 'block';
-        appSection.style.display = 'none';
-    }
+    document.getElementById('auth-section').style.display = user ? 'none' : 'block';
+    document.getElementById('app-section').style.display = user ? 'block' : 'none';
+    if (user) cargarDatos(user.uid);
 });
 
 document.getElementById('btn-login').onclick = async () => {
-    const email = document.getElementById('email').value;
-    const pass = document.getElementById('pass').value;
-    if(!email || !pass) return alert("Ingresa datos");
-    try {
-        await auth.signInWithEmailAndPassword(email, pass);
-    } catch (error) {
-        try {
-            await auth.createUserWithEmailAndPassword(email, pass);
-        } catch (err) { alert("Error: " + err.message); }
+    const e = document.getElementById('email').value, p = document.getElementById('pass').value;
+    try { await auth.signInWithEmailAndPassword(e, p); } catch {
+        try { await auth.createUserWithEmailAndPassword(e, p); } catch(err) { alert(err.message); }
     }
 };
-
 document.getElementById('btn-logout').onclick = () => auth.signOut();
 
+// --- ESCANEO DE RECIBOS (OCR) ---
+document.getElementById('input-scan').onchange = function(e) {
+    const status = document.getElementById('scan-status');
+    status.innerText = "Leyendo recibo... ⏳";
+    
+    Tesseract.recognize(e.target.files[0], 'eng').then(({ data: { text } }) => {
+        // Buscamos números con decimales (precios)
+        const matches = text.match(/\d+\.\d{2}/g);
+        if (matches) {
+            const mayorMonto = Math.max(...matches.map(Number));
+            document.getElementById('monto').value = mayorMonto;
+            status.innerText = "¡Monto detectado! ✅";
+        } else {
+            status.innerText = "No se halló el monto. ❌";
+        }
+    });
+};
+
+// --- CRUD Y DATOS ---
+function cargarDatos(uid) {
+    const filtro = document.getElementById('filtro-mes');
+    if(!filtro.value) filtro.value = new Date().toISOString().slice(0, 7);
+    
+    const [y, m] = filtro.value.split('-');
+    const inicio = firebase.firestore.Timestamp.fromDate(new Date(y, m-1, 1));
+    const fin = firebase.firestore.Timestamp.fromDate(new Date(y, m, 0, 23, 59));
+
+    db.collection("transacciones").where("uid", "==", uid)
+      .where("fecha", ">=", inicio).where("fecha", "<=", fin)
+      .orderBy("fecha", "desc").onSnapshot(snap => {
+        let bal = 0, cats = {}, html = "";
+        snap.forEach(doc => {
+            const d = doc.data();
+            bal += (d.tipo === 'ingreso' ? d.monto : -d.monto);
+            if(d.tipo === 'gasto') cats[d.categoria] = (cats[d.categoria] || 0) + d.monto;
+            html += `
+                <div class="item">
+                    <div><b>${d.categoria}</b><br><span class="monto-${d.tipo}">$${d.monto.toFixed(2)}</span></div>
+                    <div class="actions">
+                        <button onclick="editarDoc('${doc.id}', ${d.monto})">✏️</button>
+                        <button class="btn-del" onclick="eliminarDoc('${doc.id}')">🗑️</button>
+                    </div>
+                </div>`;
+        });
+        document.getElementById('balance-total').innerText = `$${bal.toFixed(2)}`;
+        document.getElementById('lista-movimientos').innerHTML = html;
+        actualizarGrafico(cats);
+    });
+}
+
+document.getElementById('btn-guardar').onclick = async () => {
+    const m = document.getElementById('monto').value, c = document.getElementById('categoria').value, t = document.getElementById('tipo').value;
+    if(!m || !c) return alert("Faltan datos");
+    await db.collection("transacciones").add({
+        uid: auth.currentUser.uid, monto: Number(m), tipo: t, categoria: c, fecha: firebase.firestore.FieldValue.serverTimestamp()
+    });
+    document.getElementById('monto').value = ""; document.getElementById('categoria').value = "";
+};
+
+// --- AUXILIARES (Borrar, Editar, Exportar, Tema) ---
+window.eliminarDoc = (id) => confirm("¿Borrar?") && db.collection("transacciones").doc(id).delete();
+
+window.editarDoc = (id, monto) => {
+    const n = prompt("Nuevo monto:", monto);
+    if(n) db.collection("transacciones").doc(id).update({ monto: Number(n) });
+};
+
+document.getElementById('btn-dark-mode').onclick = () => document.body.classList.toggle('dark-mode');
+
+document.getElementById('btn-exportar').onclick = () => {
+    let csv = "Categoria,Tipo,Monto\n";
+    db.collection("transacciones").where("uid", "==", auth.currentUser.uid).get().then(snap => {
+        snap.forEach(doc => { const d = doc.data(); csv += `${d.categoria},${d.tipo},${d.monto}\n`; });
+        const blob = new Blob([csv], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a'); a.href = url; a.download = 'finanzas.csv'; a.click();
+    });
+};
+
 function actualizarGrafico(datos) {
-    const ctx = document.getElementById('miGrafico').getContext('2d');
+    const ctx = document.getElementById('miGrafico');
     if (grafico) grafico.destroy();
     grafico = new Chart(ctx, {
         type: 'doughnut',
         data: {
             labels: Object.keys(datos),
-            datasets: [{
-                data: Object.values(datos),
-                backgroundColor: ['#2ecc71', '#e74c3c', '#f1c40f', '#3498db', '#9b59b6'],
-                borderWidth: 0
-            }]
+            datasets: [{ data: Object.values(datos), backgroundColor: ['#064E3B', '#10B981', '#34D399', '#6EE7B7', '#A7F3D0'], borderWidth: 0 }]
         },
-        options: { maintainAspectRatio: false, cutout: '78%' }
+        options: { maintainAspectRatio: false, cutout: '80%' }
     });
 }
-
-function cargarDatos(uid) {
-    const [y, m] = filtroMes.value.split('-');
-    
-    // CORRECCIÓN: Quitamos el "new" antes de firebase.firestore.Timestamp
-    const fechaInicio = firebase.firestore.Timestamp.fromDate(new Date(y, m - 1, 1));
-    const fechaFin = firebase.firestore.Timestamp.fromDate(new Date(y, m, 0, 23, 59, 59));
-
-    db.collection("transacciones")
-        .where("uid", "==", uid)
-        .where("fecha", ">=", fechaInicio)
-        .where("fecha", "<=", fechaFin)
-        .orderBy("fecha", "desc")
-        .onSnapshot(snap => {
-            let balance = 0;
-            let gastosPorCategoria = {};
-            const listaUI = document.getElementById('lista-movimientos');
-            listaUI.innerHTML = "";
-
-            snap.forEach(doc => {
-                const item = doc.data();
-                const monto = Number(item.monto);
-                
-                if(item.tipo === 'ingreso') {
-                    balance += monto;
-                } else {
-                    balance -= monto;
-                    gastosPorCategoria[item.categoria] = (gastosPorCategoria[item.categoria] || 0) + monto;
-                }
-
-                listaUI.innerHTML += `
-                    <div class="item">
-                        <span>${item.categoria}</span>
-                        <span class="monto-${item.tipo}">${item.tipo === 'gasto' ? '-' : '+'}$${monto.toFixed(2)}</span>
-                    </div>`;
-            });
-            
-            document.getElementById('balance-total').innerText = `$${balance.toFixed(2)}`;
-            actualizarGrafico(gastosPorCategoria);
-        }, (err) => {
-            console.error("Error en Snapshot: ", err);
-            // Si sale error aquí, haz clic en el link que aparecerá para crear el índice
-        });
-}
-
-document.getElementById('btn-guardar').onclick = async () => {
-    const monto = document.getElementById('monto').value;
-    const cat = document.getElementById('categoria').value;
-    const tipo = document.getElementById('tipo').value;
-
-    if(!monto || !cat) return alert("Llena los campos");
-
-    try {
-        await db.collection("transacciones").add({
-            uid: auth.currentUser.uid,
-            monto: Number(monto),
-            tipo: tipo,
-            categoria: cat,
-            fecha: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        document.getElementById('monto').value = "";
-        document.getElementById('categoria').value = "";
-    } catch (e) { alert("Error al guardar"); }
-};
-
-filtroMes.onchange = () => cargarDatos(auth.currentUser.uid);
+document.getElementById('filtro-mes').onchange = () => cargarDatos(auth.currentUser.uid);

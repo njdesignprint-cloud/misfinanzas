@@ -1,81 +1,72 @@
 :root {
-    --p: #2ecc71;
-    --g: #e74c3c;
-    --o: #1a1a1a;
-    --f: #f4f7f6;
+    --bg: #F8FAFC;           /* Fondo gris muy claro */
+    --card: #FFFFFF;         /* Blanco puro para tarjetas */
+    --primary: #064E3B;      /* Verde Bosque (Dinero/Finanzas) */
+    --accent: #10B981;       /* Verde Esmeralda (Acentos) */
+    --text: #1E293B;         /* Gris azulado oscuro (Texto) */
+    --danger: #EF4444;       /* Rojo suave (Gastos) */
+    --border: #E2E8F0;       /* Bordes finos */
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+body.dark-mode {
+    --bg: #0F172A;
+    --card: #1E293B;
+    --text: #F8FAFC;
+    --border: #334155;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; transition: background 0.3s; }
 
 body {
-    background: var(--f);
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-    display: flex;
-    justify-content: center;
+    background: var(--bg);
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--text);
+    display: flex; justify-content: center;
 }
 
-.app-container {
-    width: 100%;
-    max-width: 500px;
-    padding: 20px;
-}
+.app-container { width: 100%; max-width: 480px; padding: 20px; }
 
-.main-header { text-align: center; padding: 20px 0; }
-.header-top { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
-#balance-total { font-size: clamp(2.5rem, 10vw, 3.5rem); font-weight: 800; letter-spacing: -1px; }
+.main-header { text-align: center; padding: 30px 0; }
+#balance-total { font-size: 3.5rem; font-weight: 800; color: var(--primary); letter-spacing: -2px; }
+body.dark-mode #balance-total { color: var(--accent); }
 
-.chart-card {
-    background: white;
-    padding: 20px;
+.chart-card, .input-card, .item {
+    background: var(--card);
     border-radius: 24px;
+    padding: 20px;
     margin-bottom: 20px;
-    height: 250px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+    border: 1px solid var(--border);
+    box-shadow: 0 4px 6px -1px rgba(0,0,0,0.05);
 }
 
-.input-card {
-    background: white;
-    padding: 25px;
-    border-radius: 24px;
-    display: flex;
-    flex-direction: column;
-    gap: 15px;
-    box-shadow: 0 10px 25px rgba(0,0,0,0.03);
+.scan-wrapper { text-align: center; margin-bottom: 10px; }
+.btn-scan {
+    display: block; background: #F1F5F9; border: 2px dashed var(--accent);
+    padding: 15px; border-radius: 15px; cursor: pointer; color: var(--accent);
+    font-weight: 600; font-size: 0.9rem;
 }
 
 .row { display: flex; gap: 10px; }
-input, select, button {
-    padding: 16px;
-    border-radius: 14px;
-    border: 1px solid #efefef;
-    font-size: 16px;
-    outline: none;
-    transition: all 0.2s;
+input, select {
+    width: 100%; padding: 14px; border-radius: 12px;
+    border: 1px solid var(--border); background: var(--bg);
+    color: var(--text); font-size: 1rem;
 }
-
-input:focus { border-color: var(--o); }
 
 .btn-principal {
-    background: var(--o);
-    color: white;
-    font-weight: bold;
-    cursor: pointer;
-    border: none;
+    width: 100%; background: var(--primary); color: white;
+    border: none; padding: 16px; border-radius: 14px;
+    font-weight: 700; cursor: pointer; margin-top: 10px;
 }
 
-.btn-principal:active { transform: scale(0.98); }
-
-.item {
-    background: white;
-    padding: 18px;
-    border-radius: 18px;
-    margin-top: 12px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.01);
+.btn-secundario {
+    width: 100%; background: transparent; color: var(--text);
+    border: 1px solid var(--border); padding: 10px;
+    border-radius: 12px; margin-top: 10px; cursor: pointer;
 }
 
-.monto-gasto { color: var(--g); font-weight: bold; }
-.monto-ingreso { color: var(--p); font-weight: bold; }
-#btn-logout { padding: 8px 15px; font-size: 12px; background: #eee; border: none; }
+.item { display: flex; justify-content: space-between; align-items: center; padding: 15px 20px; }
+.actions { display: flex; gap: 15px; }
+.btn-del { color: var(--danger); background: none; border: none; cursor: pointer; font-size: 1.2rem; }
+.monto-gasto { color: var(--danger); font-weight: 700; }
+.monto-ingreso { color: var(--accent); font-weight: 700; }
