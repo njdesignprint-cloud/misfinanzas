@@ -1,4 +1,3 @@
-// Configuración con tus credenciales reales
 const firebaseConfig = {
     apiKey: "AIzaSyATpb8_S2JhY1T2Lb8lzn3_544C7Kqd4OI",
     authDomain: "misfinanzas-618f2.firebaseapp.com",
@@ -8,7 +7,7 @@ const firebaseConfig = {
     appId: "1:998483559442:web:435dced19e19a884b984cb"
 };
 
-// Inicialización de Firebase
+// Inicialización
 firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
@@ -57,18 +56,18 @@ function actualizarGrafico(datos) {
             labels: Object.keys(datos),
             datasets: [{
                 data: Object.values(datos),
-                backgroundColor: ['#2ecc71', '#e74c3c', '#f1c40f', '#3498db', '#9b59b6', '#e67e22'],
+                backgroundColor: ['#2ecc71', '#e74c3c', '#f1c40f', '#3498db', '#9b59b6'],
                 borderWidth: 0
             }]
         },
-        options: { maintainAspectRatio: false, cutout: '78%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
+        options: { maintainAspectRatio: false, cutout: '78%' }
     });
 }
 
 function cargarDatos(uid) {
     const [y, m] = filtroMes.value.split('-');
     
-    // CORRECCIÓN AQUÍ: Se quita el "new"
+    // CORRECCIÓN: Quitamos el "new" antes de firebase.firestore.Timestamp
     const fechaInicio = firebase.firestore.Timestamp.fromDate(new Date(y, m - 1, 1));
     const fechaFin = firebase.firestore.Timestamp.fromDate(new Date(y, m, 0, 23, 59, 59));
 
@@ -105,6 +104,7 @@ function cargarDatos(uid) {
             actualizarGrafico(gastosPorCategoria);
         }, (err) => {
             console.error("Error en Snapshot: ", err);
+            // Si sale error aquí, haz clic en el link que aparecerá para crear el índice
         });
 }
 
