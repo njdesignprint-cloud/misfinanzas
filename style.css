@@ -1,66 +1,35 @@
 :root {
-    --bg: #F1F5F9;
-    --card: #ffffff;
-    --primary: #0F172A;
-    --accent: #22C55E;
-    --text: #1E293B;
-    --danger: #EF4444;
-    --border: #E2E8F0;
+    --bg: #F8FAFC; --card: #ffffff; --primary: #0F172A; --accent: #10B981; 
+    --text: #1E293B; --danger: #F43F5E; --border: #E2E8F0;
 }
+body.dark-mode { --bg: #020617; --card: #0F172A; --text: #F1F5F9; --border: #1E293B; }
 
-body.dark-mode {
-    --bg: #020617;
-    --card: #1E293B;
-    --text: #F8FAFC;
-    --border: #334155;
-}
-
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; justify-content: center; }
-.app-container { width: 100%; max-width: 480px; padding: 15px; }
+* { box-sizing: border-box; margin: 0; padding: 0; outline: none; }
+body { background: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; display: flex; justify-content: center; }
+.app-container { width: 100%; max-width: 450px; padding: 15px; }
 
 .balance-card {
-    background: var(--card); padding: 25px; border-radius: 30px;
-    text-align: center; position: relative; border: 1px solid var(--border);
-    margin-bottom: 20px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.05);
+    background: var(--card); padding: 25px; border-radius: 28px;
+    position: relative; border: 1px solid var(--border); margin-bottom: 20px;
+    box-shadow: 0 20px 25px -5px rgba(0,0,0,0.05); text-align: center;
 }
 
-.resumen-mini {
-    display: flex; justify-content: space-around; margin-top: 20px;
-    padding-top: 20px; border-top: 1px solid var(--border);
-}
-.res-item small { font-size: 0.7rem; text-transform: uppercase; opacity: 0.6; }
-.res-item p { font-weight: 700; font-size: 1.1rem; }
-.res-sep { width: 1px; background: var(--border); }
+/* Barra de Presupuesto */
+.presupuesto-container { margin-top: 15px; text-align: left; }
+.presupuesto-info { display: flex; justify-content: space-between; font-size: 0.75rem; font-weight: 600; margin-bottom: 5px; opacity: 0.8; }
+.progress-bar { background: var(--bg); height: 8px; border-radius: 10px; overflow: hidden; border: 1px solid var(--border); }
+.progress-fill { background: var(--accent); height: 100%; width: 0%; transition: 0.5s; }
 
-.toggle-theme {
-    position: absolute; top: 15px; right: 15px; background: var(--bg);
-    border: 1px solid var(--border); width: 35px; height: 35px;
-    border-radius: 50%; cursor: pointer;
+.search-box input {
+    width: 100%; padding: 12px; border-radius: 15px; border: 1px solid var(--border);
+    background: var(--card); color: var(--text); margin-bottom: 15px;
 }
 
-#balance-total { font-size: 2.8rem; font-weight: 800; letter-spacing: -1.5px; margin: 5px 0; }
-
-.header-top { display: flex; justify-content: space-between; margin-bottom: 15px; }
-#btn-logout { background: #fee2e2; color: #b91c1c; border: none; padding: 5px 12px; border-radius: 8px; cursor: pointer; font-size: 0.8rem; font-weight: 600; }
-
-.chart-card, .input-card, .item {
-    background: var(--card); border-radius: 24px; padding: 20px;
-    margin-bottom: 15px; border: 1px solid var(--border);
+.item { 
+    display: flex; justify-content: space-between; align-items: center; 
+    background: var(--card); padding: 15px; border-radius: 18px; 
+    margin-bottom: 10px; border: 1px solid var(--border);
 }
 
-.row { display: flex; gap: 10px; margin-bottom: 10px; }
-input, select {
-    padding: 14px; border-radius: 12px; border: 1px solid var(--border);
-    background: var(--bg); color: var(--text); width: 100%; font-size: 16px; outline: none;
-}
-
-.btn-principal {
-    width: 100%; background: #0F172A; color: white; border: none;
-    padding: 16px; border-radius: 16px; font-weight: 700; cursor: pointer;
-}
-body.dark-mode .btn-principal { background: #334155; }
-
-.item { display: flex; justify-content: space-between; align-items: center; }
-.monto-gasto { color: var(--danger); }
-.monto-ingreso { color: var(--accent); }
+.btn-principal { background: var(--primary); color: white; border: none; padding: 16px; border-radius: 18px; width: 100%; font-weight: 700; cursor: pointer; }
+.btn-secundario { background: none; border: 1px solid var(--border); padding: 10px; border-radius: 12px; width: 100%; margin-top: 10px; color: var(--text); font-size: 0.8rem; cursor: pointer; }

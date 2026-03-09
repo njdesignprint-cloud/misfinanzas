@@ -3,19 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Finanzas Elite v2</title>
+    <title>Finanzas Ultra Pro</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
     <div id="auth-section" class="app-container" style="display: none;">
         <header class="main-header">
-            <h1>Finanzas Pro</h1>
-            <p>Gestión Inteligente de Capital</p>
+            <h1>Finanzas Elite</h1>
+            <p>Tu patrimonio en alta definición</p>
         </header>
         <div class="input-card">
             <input type="email" id="email" placeholder="Email">
             <input type="password" id="pass" placeholder="Contraseña">
-            <button id="btn-login" class="btn-principal">Acceder</button>
+            <button id="btn-login" class="btn-principal">Entrar al Sistema</button>
         </div>
     </div>
 
@@ -28,41 +28,44 @@
             
             <div class="balance-card">
                 <button id="btn-dark-mode" class="toggle-theme">🌙</button>
-                <small>BALANCE DISPONIBLE</small>
+                <small>DISPONIBLE ACTUAL</small>
                 <h1 id="balance-total">$0.00</h1>
                 
+                <div class="presupuesto-container">
+                    <div class="presupuesto-info">
+                        <span>Meta de Gasto</span>
+                        <span id="txt-presupuesto">$0 / $1000</span>
+                    </div>
+                    <div class="progress-bar"><div id="bar-progreso" class="progress-fill"></div></div>
+                </div>
+
                 <div class="resumen-mini">
-                    <div class="res-item">
-                        <small>Ingresos</small>
-                        <p id="res-ingresos" class="monto-ingreso">$0</p>
-                    </div>
+                    <div class="res-item"><small>Entradas</small><p id="res-ingresos" class="monto-ingreso">$0</p></div>
                     <div class="res-sep"></div>
-                    <div class="res-item">
-                        <small>Gastos</small>
-                        <p id="res-gastos" class="monto-gasto">$0</p>
-                    </div>
+                    <div class="res-item"><small>Salidas</small><p id="res-gastos" class="monto-gasto">$0</p></div>
                 </div>
             </div>
         </header>
 
-        <div class="chart-card">
-            <canvas id="miGrafico"></canvas>
-        </div>
+        <div class="chart-card"><canvas id="miGrafico"></canvas></div>
 
         <div class="input-card">
             <div class="row">
-                <input type="number" id="monto" placeholder="0.00" step="0.01">
+                <input type="number" id="monto" placeholder="0.00">
                 <select id="tipo">
                     <option value="gasto">Gasto 🔻</option>
                     <option value="ingreso">Ingreso 🔺</option>
                 </select>
             </div>
-            <input type="text" id="categoria" placeholder="Ej: Comida, Sueldo, Renta...">
-            <button id="btn-guardar" class="btn-principal">Registrar Transacción</button>
-            <button id="btn-exportar" class="btn-secundario">📥 Exportar Reporte</button>
+            <input type="text" id="categoria" placeholder="Categoría (Comida, Renta...)">
+            <button id="btn-guardar" class="btn-principal">Registrar</button>
+            <button id="btn-set-presupuesto" class="btn-secundario">⚙️ Ajustar Límite Mensual</button>
         </div>
 
-        <h3 style="margin: 10px 0; font-size: 1rem; opacity: 0.7;">Movimientos Recientes</h3>
+        <div class="search-box">
+            <input type="text" id="buscador" placeholder="🔍 Buscar movimiento...">
+        </div>
+        
         <div id="lista-movimientos"></div>
     </div>
 

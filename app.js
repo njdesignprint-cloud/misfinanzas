@@ -11,20 +11,13 @@ firebase.initializeApp(firebaseConfig);
 const auth = firebase.auth();
 const db = firebase.firestore();
 let grafico = null;
+let limiteGasto = 1000; // Valor por defecto
 
 auth.onAuthStateChanged(user => {
+    if(user) cargarDatos(user.uid);
     document.getElementById('auth-section').style.display = user ? 'none' : 'block';
     document.getElementById('app-section').style.display = user ? 'block' : 'none';
-    if(user) cargarDatos(user.uid);
 });
-
-document.getElementById('btn-login').onclick = async () => {
-    const e = document.getElementById('email').value, p = document.getElementById('pass').value;
-    try { await auth.signInWithEmailAndPassword(e, p); } catch {
-        try { await auth.createUserWithEmailAndPassword(e, p); } catch(err) { alert(err.message); }
-    }
-};
-document.getElementById('btn-logout').onclick = () => auth.signOut();
 
 function cargarDatos(uid) {
     const filtro = document.getElementById('filtro-mes');
@@ -36,54 +29,63 @@ function cargarDatos(uid) {
     db.collection("transacciones").where("uid", "==", uid)
       .where("fecha", ">=", inicio).where("fecha", "<=", fin)
       .orderBy("fecha", "desc").onSnapshot(snap => {
-        let totalIngresos = 0, totalGastos = 0, datosGrafica = {}, html = "";
+        let tIn = 0, tGa = 0, cats = {}, html = "";
         
         snap.forEach(doc => {
             const d = doc.data();
-            const monto = d.monto;
-            
-            if(d.tipo === 'ingreso') {
-                totalIngresos += monto;
-            } else {
-                totalGastos += monto;
+            if(d.tipo === 'ingreso') tIn += d.monto; 
+            else { 
+                tGa += d.monto; 
+                cats[d.categoria] = (cats[d.categoria] || 0) + d.monto; 
             }
-            
-            const etiqueta = `${d.categoria} (${d.tipo === 'gasto' ? 'G' : 'I'})`;
-            datosGrafica[etiqueta] = (datosGrafica[etiqueta] || 0) + monto;
-
             html += `
-                <div class="item">
-                    <div><b>${d.categoria}</b><br><span class="monto-${d.tipo}">$${monto.toFixed(2)}</span></div>
+                <div class="item" data-nombre="${d.categoria.toLowerCase()}">
+                    <div><b>${d.categoria}</b><br><span class="monto-${d.tipo}">$${d.monto.toFixed(2)}</span></div>
                     <div>
-                        <button onclick="editarDoc('${doc.id}', ${monto})" style="border:none; background:none; cursor:pointer;">✏️</button>
-                        <button onclick="eliminarDoc('${doc.id}')" style="border:none; background:none; cursor:pointer; color:#EF4444;">🗑️</button>
+                        <button onclick="eliminarDoc('${doc.id}')" style="border:none; background:none; cursor:pointer;">🗑️</button>
                     </div>
                 </div>`;
         });
 
-        document.getElementById('res-ingresos').innerText = `+$${totalIngresos.toFixed(2)}`;
-        document.getElementById('res-gastos').innerText = `-$${totalGastos.toFixed(2)}`;
-        document.getElementById('balance-total').innerText = `$${(totalIngresos - totalGastos).toFixed(2)}`;
+        // Actualizar UI
+        document.getElementById('res-ingresos').innerText = `+$${tIn.toFixed(0)}`;
+        document.getElementById('res-gastos').innerText = `-$${tGa.toFixed(0)}`;
+        document.getElementById('balance-total').innerText = `$${(tIn - tGa).toFixed(2)}`;
         document.getElementById('lista-movimientos').innerHTML = html;
-        actualizarGrafico(datosGrafica);
+        
+        // Lógica de Presupuesto
+        const porc = Math.min((tGa / limiteGasto) * 100, 100);
+        document.getElementById('bar-progreso').style.width = porc + "%";
+        document.getElementById('bar-progreso').style.background = porc > 85 ? "#F43F5E" : "#10B981";
+        document.getElementById('txt-presupuesto').innerText = `$${tGa.toFixed(0)} / $${limiteGasto}`;
+
+        actualizarGrafico(cats);
     });
 }
 
+// Buscador Pro en tiempo real
+document.getElementById('buscador').oninput = (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.item').forEach(it => {
+        it.style.display = it.dataset.nombre.includes(term) ? 'flex' : 'none';
+    });
+};
+
+document.getElementById('btn-set-presupuesto').onclick = () => {
+    const nuevo = prompt("¿Cuál es tu límite de gasto mensual?", limiteGasto);
+    if(nuevo) { limiteGasto = Number(nuevo); cargarDatos(auth.currentUser.uid); }
+};
+
 document.getElementById('btn-guardar').onclick = async () => {
     const m = document.getElementById('monto').value, c = document.getElementById('categoria').value, t = document.getElementById('tipo').value;
-    if(!m || !c) return alert("Llena todos los campos");
+    if(!m || !c) return alert("Datos incompletos");
     await db.collection("transacciones").add({
         uid: auth.currentUser.uid, monto: Number(m), tipo: t, categoria: c, fecha: firebase.firestore.FieldValue.serverTimestamp()
     });
     document.getElementById('monto').value = ""; document.getElementById('categoria').value = "";
 };
 
-window.eliminarDoc = (id) => confirm("¿Deseas eliminar permanentemente?") && db.collection("transacciones").doc(id).delete();
-
-window.editarDoc = (id, monto) => {
-    const n = prompt("Actualizar monto:", monto);
-    if(n) db.collection("transacciones").doc(id).update({ monto: Number(n) });
-};
+window.eliminarDoc = (id) => confirm("¿Eliminar?") && db.collection("transacciones").doc(id).delete();
 
 document.getElementById('btn-dark-mode').onclick = () => {
     document.body.classList.toggle('dark-mode');
@@ -99,25 +101,19 @@ function actualizarGrafico(datos) {
             labels: Object.keys(datos),
             datasets: [{ 
                 data: Object.values(datos), 
-                // Colores profesionales y diferenciados
-                backgroundColor: [
-                    '#3B82F6', '#EF4444', '#10B981', '#F59E0B', 
-                    '#6366F1', '#EC4899', '#8B5CF6', '#F97316'
-                ], 
-                borderWidth: 2,
-                borderColor: getComputedStyle(document.body).getPropertyValue('--card')
+                backgroundColor: ['#6366F1', '#F43F5E', '#10B981', '#F59E0B', '#EC4899', '#8B5CF6'], 
+                borderWidth: 0 
             }]
         },
-        options: { 
-            maintainAspectRatio: false, 
-            cutout: '75%', 
-            plugins: { 
-                legend: { 
-                    position: 'bottom', 
-                    labels: { boxWidth: 12, padding: 15, font: { size: 11, family: 'sans-serif' }, color: getComputedStyle(document.body).getPropertyValue('--text') } 
-                } 
-            } 
-        }
+        options: { maintainAspectRatio: false, cutout: '80%', plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 10 } } } } }
     });
 }
+
+document.getElementById('btn-login').onclick = async () => {
+    const e = document.getElementById('email').value, p = document.getElementById('pass').value;
+    try { await auth.signInWithEmailAndPassword(e, p); } catch {
+        try { await auth.createUserWithEmailAndPassword(e, p); } catch(err) { alert(err.message); }
+    }
+};
+document.getElementById('btn-logout').onclick = () => auth.signOut();
 document.getElementById('filtro-mes').onchange = () => cargarDatos(auth.currentUser.uid);
