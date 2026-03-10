@@ -13,7 +13,18 @@ const db = firebase.firestore();
 let grafico = null;
 let limiteGasto = 1000;
 
+// --- PERSISTENCIA DEL MODO OSCURO ---
+function aplicarTema() {
+    const estado = localStorage.getItem('modo-oscuro');
+    if (estado === 'activado') {
+        document.body.classList.add('dark-mode');
+        if(document.getElementById('btn-dark-mode')) document.getElementById('btn-dark-mode').innerText = '☀️';
+    }
+}
+aplicarTema();
+
 auth.onAuthStateChanged(user => {
+    aplicarTema(); 
     document.getElementById('auth-section').style.display = user ? 'none' : 'block';
     document.getElementById('app-section').style.display = user ? 'block' : 'none';
     if(user) cargarDatos(user.uid);
@@ -35,7 +46,6 @@ function cargarDatos(uid) {
             const d = doc.data();
             if(d.tipo === 'ingreso') tIn += d.monto; else tGa += d.monto;
             
-            // VOLVEMOS A INCLUIR TODO EN LA GRÁFICA
             const label = `${d.categoria} (${d.tipo === 'gasto' ? 'G' : 'I'})`;
             datosGrafica[label] = (datosGrafica[label] || 0) + d.monto;
 
@@ -51,7 +61,6 @@ function cargarDatos(uid) {
         document.getElementById('balance-total').innerText = `$${(tIn - tGa).toFixed(2)}`;
         document.getElementById('lista-movimientos').innerHTML = html;
         
-        // Presupuesto
         const porc = Math.min((tGa / limiteGasto) * 100, 100);
         document.getElementById('bar-progreso').style.width = porc + "%";
         document.getElementById('bar-progreso').style.background = porc > 90 ? "#E53E3E" : "#38A169";
@@ -61,12 +70,12 @@ function cargarDatos(uid) {
     });
 }
 
-// Búsqueda
-document.getElementById('buscador').oninput = (e) => {
-    const term = e.target.value.toLowerCase();
-    document.querySelectorAll('.item').forEach(it => {
-        it.style.display = it.dataset.nombre.includes(term) ? 'flex' : 'none';
-    });
+document.getElementById('btn-dark-mode').onclick = () => {
+    document.body.classList.toggle('dark-mode');
+    const esOscuro = document.body.classList.contains('dark-mode');
+    localStorage.setItem('modo-oscuro', esOscuro ? 'activado' : 'desactivado');
+    document.getElementById('btn-dark-mode').innerText = esOscuro ? '☀️' : '🌙';
+    if(grafico) cargarDatos(auth.currentUser.uid);
 };
 
 document.getElementById('btn-guardar').onclick = async () => {
@@ -80,14 +89,16 @@ document.getElementById('btn-guardar').onclick = async () => {
 
 window.eliminarDoc = (id) => confirm("¿Eliminar?") && db.collection("transacciones").doc(id).delete();
 
-document.getElementById('btn-dark-mode').onclick = () => {
-    document.body.classList.toggle('dark-mode');
-    document.getElementById('btn-dark-mode').innerText = document.body.classList.contains('dark-mode') ? '☀️' : '🌙';
-};
-
 document.getElementById('btn-set-presupuesto').onclick = () => {
     const n = prompt("Límite mensual de gasto:", limiteGasto);
     if(n) { limiteGasto = Number(n); cargarDatos(auth.currentUser.uid); }
+};
+
+document.getElementById('buscador').oninput = (e) => {
+    const term = e.target.value.toLowerCase();
+    document.querySelectorAll('.item').forEach(it => {
+        it.style.display = it.dataset.nombre.includes(term) ? 'flex' : 'none';
+    });
 };
 
 function actualizarGrafico(datos) {
