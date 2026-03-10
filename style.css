@@ -1,37 +1,36 @@
 :root {
     --bg: #F0F4F8; --card: #FFFFFF; --text: #1A202C; --primary: #2D3748;
-    --accent: #38A169; --danger: #E53E3E; --border: #E2E8F0; --fixed: #4A5568;
+    --accent: #38A169; --danger: #E53E3E; --border: #E2E8F0;
 }
-
 body.dark-mode {
-    --bg: #1A202C; --card: #2D3748; --text: #F7FAFC; --border: #4A5568; --primary: #A0AEC0;
+    --bg: #1A202C; --card: #2D3748; --text: #F7FAFC; --border: #4A5568;
 }
-
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Inter', sans-serif; }
-body { background: var(--bg); color: var(--text); padding-bottom: 50px; }
+body { background: var(--bg); color: var(--text); padding-bottom: 30px; }
 .app-container { width: 100%; max-width: 500px; margin: 0 auto; padding: 15px; }
+.card { background: var(--card); border-radius: 20px; padding: 18px; margin-bottom: 15px; border: 1px solid var(--border); }
 
-.card { background: var(--card); border-radius: 24px; padding: 20px; margin-bottom: 20px; border: 1px solid var(--border); box-shadow: 0 4px 6px rgba(0,0,0,0.02); }
+.header-flex { display: flex; justify-content: space-between; align-items: center; }
+.btn-mini { background: none; border: 1px solid var(--border); padding: 5px 10px; border-radius: 8px; font-size: 0.7rem; color: var(--text); cursor: pointer; }
 
-/* Grid de Gastos Fijos */
-.fixed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 10px; }
+.fixed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
 .btn-fixed { 
-    background: var(--bg); border: 1px solid var(--border); padding: 12px 5px; 
-    border-radius: 15px; cursor: pointer; color: var(--text); font-size: 0.7rem; 
-    font-weight: 700; display: flex; flex-direction: column; align-items: center; gap: 5px;
-    transition: all 0.2s;
+    background: var(--bg); border: 1px solid var(--border); padding: 15px 5px; 
+    border-radius: 15px; cursor: pointer; color: var(--text); font-size: 0.65rem; 
+    text-align: center; display: flex; flex-direction: column; align-items: center;
 }
-.btn-fixed:hover { background: var(--accent); color: white; }
-.btn-fixed span { font-size: 1.2rem; }
+.btn-fixed b { font-size: 1.1rem; margin-bottom: 4px; }
+.btn-fixed small { opacity: 0.7; font-weight: 800; }
 
 .balance-card { text-align: center; position: relative; }
-#balance-total { font-size: 3rem; font-weight: 800; color: var(--accent); margin: 10px 0; }
+#balance-total { font-size: 2.8rem; font-weight: 800; color: var(--accent); margin: 5px 0; }
+.resumen-row { display: flex; justify-content: space-around; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 10px; }
 
-.input-lg { padding: 16px; border-radius: 14px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; font-size: 1rem; }
-.btn-principal { width: 100%; background: #1A202C; color: white; border: none; padding: 18px; border-radius: 16px; font-weight: 700; cursor: pointer; }
+.input-lg { padding: 14px; border-radius: 12px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; margin-top: 5px; }
+.btn-principal { width: 100%; background: #1A202C; color: white; border: none; padding: 16px; border-radius: 14px; font-weight: 700; cursor: pointer; margin-top: 10px; }
 body.dark-mode .btn-principal { background: var(--accent); }
 
-.item { display: flex; justify-content: space-between; align-items: center; background: var(--card); padding: 15px; border-radius: 15px; margin-bottom: 10px; border: 1px solid var(--border); }
+.item { display: flex; justify-content: space-between; align-items: center; padding: 12px; border-bottom: 1px solid var(--border); }
 .monto-gasto { color: var(--danger); font-weight: 700; }
 .monto-ingreso { color: var(--accent); font-weight: 700; }
-.toggle-theme { position: absolute; top: 15px; right: 15px; background: none; border: none; cursor: pointer; }
+.toggle-theme { position: absolute; top: 10px; right: 10px; background: none; border: none; font-size: 1.2rem; cursor: pointer; }

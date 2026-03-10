@@ -12,87 +12,89 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 let grafico = null;
 
-// CONFIGURACIÓN DE GASTOS FIJOS
-const GASTOS_FIJOS = [
-    { id: 'renta', nombre: 'Renta', icon: '🏠' },
-    { id: 'carro', nombre: 'Carro', icon: '🚗' },
-    { id: 'celulares', nombre: 'Celulares', icon: '📱' },
-    { id: 'seguro_c', nombre: 'Seguro Carro', icon: '🛡️' },
-    { id: 'seguro_m', nombre: 'Seguro Medico', icon: '🏥' },
-    { id: 'mercado', nombre: 'Mercado', icon: '🛒' },
-    { id: 'mia', nombre: 'Mia', icon: '👧' },
-    { id: 'colegio', nombre: 'Colegio', icon: '🎓' },
-    { id: 'familia', nombre: 'Familia', icon: '👨‍👩‍👧' }
+const LISTA_FIJOS = [
+    { id: 'renta', n: 'Renta', i: '🏠' }, { id: 'carro', n: 'Carro', i: '🚗' },
+    { id: 'cel', n: 'Celulares', i: '📱' }, { id: 'seg_c', n: 'Seguro Carro', i: '🛡️' },
+    { id: 'seg_m', n: 'Seguro Medico', i: '🏥' }, { id: 'merc', n: 'Mercado', i: '🛒' },
+    { id: 'mia', n: 'Mia', i: '👧' }, { id: 'col', n: 'Colegio', i: '🎓' },
+    { id: 'fam', n: 'Familia', i: '👨‍👩‍👧' }
 ];
 
-// --- PERSISTENCIA TEMA ---
 function aplicarTema() {
     if (localStorage.getItem('modo-oscuro') === 'activado') document.body.classList.add('dark-mode');
 }
 aplicarTema();
 
 auth.onAuthStateChanged(user => {
-    if(user) {
-        renderizarGastosFijos();
-        cargarDatos(user.uid);
-    }
+    if(user) { renderizarFijos(); cargarDatos(user.uid); }
     document.getElementById('auth-section').style.display = user ? 'none' : 'block';
     document.getElementById('app-section').style.display = user ? 'block' : 'none';
 });
 
-// Renderizar botones de gastos fijos
-function renderizarGastosFijos() {
+// 1. DIBUJAR LOS BOTONES
+function renderizarFijos() {
     const grid = document.getElementById('fixed-grid');
     grid.innerHTML = '';
-    GASTOS_FIJOS.forEach(gasto => {
-        // Recuperamos el monto guardado de localStorage si existe
-        const montoGuardado = localStorage.getItem(`monto_${gasto.id}`) || "0";
+    LISTA_FIJOS.forEach(g => {
+        const monto = localStorage.getItem(`m_${g.id}`) || "0";
+        const dia = localStorage.getItem(`d_${g.id}`) || "--";
         const btn = document.createElement('button');
         btn.className = 'btn-fixed';
-        btn.innerHTML = `<span>${gasto.icon}</span>${gasto.nombre}<br><small>$${montoGuardado}</small>`;
-        btn.onclick = () => procesarGastoFijo(gasto);
+        btn.innerHTML = `<b>${g.i}</b>${g.n}<br><small>$${monto}</small><br><span style="font-size:0.5rem">Día: ${dia}</span>`;
+        btn.onclick = () => pagarFijo(g);
         grid.appendChild(btn);
     });
 }
 
-async function procesarGastoFijo(gasto) {
-    const montoActual = localStorage.getItem(`monto_${gasto.id}`) || "0";
-    const nuevoMonto = prompt(`Monto para ${gasto.nombre}:`, montoActual);
+// 2. CONFIGURAR (PARA CAMBIAR MONTOS Y FECHAS SIN PAGAR)
+window.configurarGastosFijos = () => {
+    const id = prompt("Escribe el nombre del gasto a configurar (Ej: Renta, Carro, Mia...):").toLowerCase();
+    const gasto = LISTA_FIJOS.find(x => x.n.toLowerCase().includes(id) || x.id.includes(id));
     
-    if (nuevoMonto !== null) {
-        localStorage.setItem(`monto_${gasto.id}`, nuevoMonto);
+    if(gasto) {
+        const nuevoM = prompt(`Nuevo monto para ${gasto.n}:`, localStorage.getItem(`m_${gasto.id}`) || "0");
+        const nuevoD = prompt(`Día de pago (1-31):`, localStorage.getItem(`d_${gasto.id}`) || "1");
         
-        // Guardar en Firebase
+        // Si pone 0 o vacío, se borra
+        if(!nuevoM || nuevoM == "0") {
+            localStorage.removeItem(`m_${gasto.id}`);
+            localStorage.removeItem(`d_${gasto.id}`);
+        } else {
+            localStorage.setItem(`m_${gasto.id}`, nuevoM);
+            localStorage.setItem(`d_${gasto.id}`, nuevoD);
+        }
+        renderizarFijos();
+    } else {
+        alert("No encontré ese gasto. Escribe el nombre tal cual aparece.");
+    }
+};
+
+// 3. PAGAR (REGISTRAR EN FIREBASE Y AGENDAR)
+async function pagarFijo(g) {
+    const monto = localStorage.getItem(`m_${g.id}`);
+    const dia = localStorage.getItem(`d_${g.id}`);
+
+    if(!monto || monto == "0") {
+        return alert("Primero configura este gasto en el botón ⚙️ Configurar");
+    }
+
+    if(confirm(`¿Registrar pago de $${monto} para ${g.n}?`)) {
         await db.collection("transacciones").add({
-            uid: auth.currentUser.uid,
-            monto: Number(nuevoMonto),
-            tipo: 'gasto',
-            categoria: gasto.nombre,
+            uid: auth.currentUser.uid, monto: Number(monto), tipo: 'gasto', categoria: g.n,
             fecha: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        // PREGUNTAR POR RECORDATORIO
-        if(confirm(`¿Deseas agendar un recordatorio en tu calendario para el pago de ${gasto.nombre}?`)) {
-            crearRecordatorioGoogle(gasto.nombre, nuevoMonto);
+        if(confirm("¿Quieres agendar el recordatorio para el próximo mes?")) {
+            const hoy = new Date();
+            const proxMes = new Date(hoy.getFullYear(), hoy.getMonth() + 1, parseInt(dia), 10, 0);
+            const iso = proxMes.toISOString().replace(/-|:|\.\d\d\d/g, "");
+            const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=PAGAR+${g.n.toUpperCase()}&dates=${iso}/${iso}&details=Pago+de+$${monto}&sf=true&output=xml`;
+            window.open(url, '_blank');
         }
-        
-        renderizarGastosFijos();
     }
 }
 
-// Función Pro: Crea un evento de calendario para que el celular avise
-function crearRecordatorioGoogle(nombre, monto) {
-    const fecha = new Date();
-    // Lo programamos para el próximo mes el mismo día
-    const fechaRecordatorio = new Date(fecha.getFullYear(), fecha.getMonth() + 1, fecha.getDate(), 10, 0); 
-    const fmtFecha = fechaRecordatorio.toISOString().replace(/-|:|\.\d\d\d/g, "");
-    
-    const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=PAGAR+${nombre.toUpperCase()}+($${monto})&dates=${fmtFecha}/${fmtFecha}&details=Recordatorio+de+pago+desde+Finanzas+Elite&sf=true&output=xml`;
-    
-    window.open(url, '_blank');
-}
-
-// --- LOGICA DE DATOS ---
+// LOGICA DE CARGA Y GRAFICO (IGUAL QUE ANTES)
 function cargarDatos(uid) {
     const filtro = document.getElementById('filtro-mes');
     if(!filtro.value) filtro.value = new Date().toISOString().slice(0, 7);
@@ -119,7 +121,6 @@ function cargarDatos(uid) {
     });
 }
 
-// (Resto de funciones: guardar manual, borrar, gráfico, dark mode...)
 document.getElementById('btn-guardar').onclick = async () => {
     const m = document.getElementById('monto').value, c = document.getElementById('categoria').value, t = document.getElementById('tipo').value;
     if(!m || !c) return alert("Faltan datos");
