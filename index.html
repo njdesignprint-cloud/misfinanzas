@@ -3,9 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Finanzas Elite - One Click</title>
+    <title>Finanzas Elite Pro</title>
     <link rel="stylesheet" href="style.css">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="auth-section" class="app-container" style="display: none;">
@@ -13,7 +12,7 @@
             <h1>Finanzas Pro</h1>
             <input type="email" id="email" placeholder="Email">
             <input type="password" id="pass" placeholder="Contraseña">
-            <button id="btn-login" class="btn-principal">Acceder</button>
+            <button id="btn-login" class="btn-principal">Entrar</button>
         </div>
     </div>
 
@@ -25,7 +24,7 @@
 
         <div class="card balance-card">
             <button id="btn-dark-mode" class="toggle-theme">🌙</button>
-            <small>ESTADO DISPONIBLE</small>
+            <small>DISPONIBLE</small>
             <h1 id="balance-total">$0.00</h1>
             <div class="resumen-row">
                 <div class="res-box"><small>Ingresos</small><p id="res-ingresos" class="monto-ingreso">+$0</p></div>
@@ -36,13 +35,9 @@
         <div class="card">
             <div class="header-flex">
                 <h3>Gastos Fijos</h3>
-                <label class="switch-config">
-                    <input type="checkbox" id="modo-edicion">
-                    <span class="slider">⚙️ Modo Editar</span>
-                </label>
+                <button id="btn-nuevo-fijo" class="btn-mini">+ Nuevo</button>
             </div>
-            <div class="fixed-grid" id="fixed-grid">
-                </div>
+            <div class="fixed-grid" id="fixed-grid"></div>
         </div>
 
         <div class="card chart-section">
@@ -50,8 +45,8 @@
         </div>
 
         <div class="card form-section">
-            <h3>Registro Manual</h3>
-            <input type="number" id="monto" placeholder="Monto $0.00" class="input-lg">
+            <h3>Movimiento Manual</h3>
+            <input type="number" id="monto" placeholder="0.00" class="input-lg">
             <div class="row">
                 <select id="tipo" class="input-lg">
                     <option value="gasto">Gasto 🔻</option>
@@ -62,10 +57,7 @@
             <button id="btn-guardar" class="btn-principal">Guardar</button>
         </div>
 
-        <div class="history-section">
-            <h3>Historial Reciente</h3>
-            <div id="lista-movimientos"></div>
-        </div>
+        <div id="lista-movimientos"></div>
     </div>
 
     <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
