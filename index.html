@@ -3,29 +3,36 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Finanzas Elite Pro</title>
+    <title>Finanzas Pro</title>
+    
+    <link rel="manifest" href="manifest.json">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Finanzas Pro">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/10384/10384161.png">
+
     <link rel="stylesheet" href="style.css">
     <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;600;800&display=swap" rel="stylesheet">
 </head>
 <body>
     <div id="auth-section" class="app-container" style="display: none;">
-        <div class="card auth-card">
-            <h1>Finanzas Pro</h1>
-            <input type="email" id="email" placeholder="Email">
-            <input type="password" id="pass" placeholder="Contraseña">
-            <button id="btn-login" class="btn-principal">Entrar</button>
+        <div class="card">
+            <h2 style="text-align: center; margin-bottom: 20px;">Finanzas Pro</h2>
+            <input type="email" id="email" placeholder="Email" class="input-lg">
+            <input type="password" id="pass" placeholder="Contraseña" class="input-lg">
+            <button id="btn-login" class="btn-principal">Entrar / Registrarse</button>
         </div>
     </div>
 
     <div id="app-section" class="app-container" style="display: none;">
         <div class="top-nav">
-            <input type="month" id="filtro-mes">
+            <input type="month" id="filtro-mes" class="btn-mini" style="border: 1px solid var(--border); padding: 5px; border-radius: 10px;">
             <button id="btn-logout">Salir</button>
         </div>
 
         <div class="card balance-card">
             <button id="btn-dark-mode" class="toggle-theme">🌙</button>
-            <small>BALANCE TOTAL</small>
+            <small style="font-weight: 800; opacity: 0.6;">BALANCE TOTAL</small>
             <h1 id="balance-total">$0.00</h1>
             <div class="resumen-row">
                 <div class="res-box"><small>Ingresos</small><p id="res-ingresos" class="monto-ingreso">+$0</p></div>
@@ -38,25 +45,25 @@
                 <h3>Gastos Fijos</h3>
                 <button id="btn-nuevo-fijo" class="btn-add">+</button>
             </div>
-            <p style="font-size: 0.65rem; opacity: 0.5; margin-bottom: 10px;">Toque para pagar • Mantenga para eliminar</p>
+            <p style="font-size: 0.65rem; opacity: 0.5; margin-bottom: 10px;">Clic para pagar • Mantén para borrar</p>
             <div class="fixed-grid" id="fixed-grid"></div>
         </div>
 
-        <div class="card chart-section">
-            <canvas id="miGrafico"></canvas>
+        <div class="card">
+            <canvas id="miGrafico" style="max-height: 200px;"></canvas>
         </div>
 
-        <div class="card form-section">
+        <div class="card">
             <h3>Registro Manual</h3>
             <input type="number" id="monto" placeholder="0.00" class="input-lg">
-            <div class="row">
+            <div class="row" style="display: flex; gap: 10px;">
                 <select id="tipo" class="input-lg">
                     <option value="gasto">Gasto 🔻</option>
                     <option value="ingreso">Ingreso 🔺</option>
                 </select>
                 <input type="text" id="categoria" placeholder="Categoría" class="input-lg">
             </div>
-            <button id="btn-guardar" class="btn-principal">Guardar</button>
+            <button id="btn-guardar" class="btn-principal">Guardar Registro</button>
         </div>
 
         <div id="lista-movimientos"></div>

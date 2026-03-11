@@ -13,9 +13,10 @@ const db = firebase.firestore();
 let grafico = null;
 
 const ICONOS = {
-    renta: '🏠', carro: '🚗', celular: '📱', seguro: '🛡️', medico: '🏥', 
-    mercado: '🛒', mia: '👧', colegio: '🎓', familia: '👨‍👩‍👧', gym: '🏋️',
-    luz: '💡', agua: '💧', internet: '🌐', netflix: '📺'
+    renta: '🏠', casa: '🏠', carro: '🚗', auto: '🚗', celular: '📱', movil: '📱',
+    seguro: '🛡️', medico: '🏥', salud: '🏥', mercado: '🛒', comida: '🛒',
+    mia: '👧', colegio: '🎓', escuela: '🎓', familia: '👨‍👩+👧', gym: '🏋️',
+    luz: '💡', agua: '💧', internet: '🌐', netflix: '📺', suscrip: '📺'
 };
 
 function getIcon(nombre) {
@@ -27,11 +28,6 @@ function getIcon(nombre) {
 let misGastosFijos = JSON.parse(localStorage.getItem('misGastosFijos')) || [
     'Renta', 'Carro', 'Celulares', 'Seguro Carro', 'Seguro Medico', 'Mercado', 'Mia', 'Colegio', 'Familia'
 ];
-
-function iniciarApp() {
-    if (localStorage.getItem('modo-oscuro') === 'activado') document.body.classList.add('dark-mode');
-}
-iniciarApp();
 
 auth.onAuthStateChanged(user => {
     if(user) { renderFijos(); cargarDatos(user.uid); }
@@ -47,20 +43,19 @@ function renderFijos() {
         btn.className = 'btn-fixed';
         btn.innerHTML = `<b>${getIcon(nombre)}</b><span>${nombre}</span>`;
         
-        // Lógica de detección de toque largo
         let timer;
-        btn.ontouchstart = () => timer = setTimeout(() => eliminarGastoLista(nombre), 800);
-        btn.ontouchend = () => clearTimeout(timer);
-        btn.onmousedown = () => timer = setTimeout(() => eliminarGastoLista(nombre), 800);
-        btn.onmouseup = () => clearTimeout(timer);
-        
+        const start = () => timer = setTimeout(() => eliminarGastoLista(nombre), 800);
+        const end = () => clearTimeout(timer);
+
+        btn.ontouchstart = start; btn.ontouchend = end;
+        btn.onmousedown = start; btn.onmouseup = end;
         btn.onclick = () => procesarPago(nombre);
         grid.appendChild(btn);
     });
 }
 
 function eliminarGastoLista(nombre) {
-    if(confirm(`¿Quieres eliminar "${nombre}" de tus accesos directos?`)) {
+    if(confirm(`¿Eliminar "${nombre}" de los gastos fijos?`)) {
         misGastosFijos = misGastosFijos.filter(n => n !== nombre);
         localStorage.setItem('misGastosFijos', JSON.stringify(misGastosFijos));
         renderFijos();
@@ -68,7 +63,7 @@ function eliminarGastoLista(nombre) {
 }
 
 document.getElementById('btn-nuevo-fijo').onclick = () => {
-    const nuevo = prompt("Nombre del gasto:");
+    const nuevo = prompt("Nombre del nuevo gasto fijo:");
     if(nuevo && !misGastosFijos.includes(nuevo)) {
         misGastosFijos.push(nuevo);
         localStorage.setItem('misGastosFijos', JSON.stringify(misGastosFijos));
@@ -78,7 +73,7 @@ document.getElementById('btn-nuevo-fijo').onclick = () => {
 
 async function procesarPago(nombre) {
     const montoPrevio = localStorage.getItem(`monto_${nombre}`) || "";
-    const monto = prompt(`Monto para ${nombre}:`, montoPrevio);
+    const monto = prompt(`Monto a pagar para ${nombre}:`, montoPrevio);
     
     if (monto && !isNaN(monto)) {
         localStorage.setItem(`monto_${nombre}`, monto);
@@ -87,19 +82,12 @@ async function procesarPago(nombre) {
             fecha: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        if(confirm("¿Agendar aviso ruidoso para el próximo mes?")) {
-            const diaVence = prompt("Día que vence (1-31):", new Date().getDate());
+        if(confirm("¿Agendar aviso en el calendario del iPhone?")) {
+            const diaVence = prompt("¿Qué día del mes vence?", new Date().getDate());
             const hoy = new Date();
-            // Programamos para el mismo día del mes siguiente a las 10 AM
             const prox = new Date(hoy.getFullYear(), hoy.getMonth() + 1, parseInt(diaVence), 10, 0);
-            const fin = new Date(hoy.getFullYear(), hoy.getMonth() + 1, parseInt(diaVence), 11, 0);
-            
-            const isoInicio = prox.toISOString().replace(/-|:|\.\d\d\d/g, "");
-            const isoFin = fin.toISOString().replace(/-|:|\.\d\d\d/g, "");
-            
-            // Link optimizado para que Google Calendar lo sincronice con el iPhone
-            const url = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=PAGAR+${nombre.toUpperCase()}&dates=${isoInicio}/${isoFin}&details=Recordatorio+Finanzas+Pro&sf=true`;
-            window.open(url, '_blank');
+            const iso = prox.toISOString().replace(/-|:|\.\d\d\d/g, "");
+            window.open(`https://calendar.google.com/calendar/render?action=TEMPLATE&text=PAGAR+${nombre.toUpperCase()}&dates=${iso}/${iso}&details=Monto:+$${monto}&sf=true`, '_blank');
         }
     }
 }
@@ -119,12 +107,12 @@ function cargarDatos(uid) {
             const d = doc.data();
             if(d.tipo === 'ingreso') tIn += d.monto; else tGa += d.monto;
             dG[d.categoria] = (dG[d.categoria] || 0) + d.monto;
-            html += `<div class="item"><span><b>${d.categoria}</b><br><small>$${d.monto.toFixed(2)}</small></span>
+            html += `<div class="item"><span><b>${d.categoria}</b><br><small class="monto-${d.tipo}">$${d.monto}</small></span>
             <button onclick="eliminarDoc('${doc.id}')" style="border:none; background:none; cursor:pointer;">🗑️</button></div>`;
         });
         document.getElementById('balance-total').innerText = `$${(tIn - tGa).toFixed(2)}`;
-        document.getElementById('res-ingresos').innerText = `+$${tIn.toFixed(0)}`;
-        document.getElementById('res-gastos').innerText = `-$${tGa.toFixed(0)}`;
+        document.getElementById('res-ingresos').innerText = `+$${tIn}`;
+        document.getElementById('res-gastos').innerText = `-$${tGa}`;
         document.getElementById('lista-movimientos').innerHTML = html;
         actualizarGrafico(dG);
     });
@@ -150,7 +138,7 @@ function actualizarGrafico(datos) {
     grafico = new Chart(ctx, {
         type: 'doughnut',
         data: { labels: Object.keys(datos), datasets: [{ data: Object.values(datos), backgroundColor: ['#3B82F6', '#EF4444', '#10B981', '#F59E0B', '#8B5CF6', '#EC4899'], borderWidth: 4, borderColor: getComputedStyle(document.body).getPropertyValue('--card') }] },
-        options: { maintainAspectRatio: false, cutout: '70%', plugins: { legend: { display: false } } }
+        options: { maintainAspectRatio: false, cutout: '75%', plugins: { legend: { display: false } } }
     });
 }
 
@@ -162,3 +150,4 @@ document.getElementById('btn-login').onclick = async () => {
 };
 document.getElementById('btn-logout').onclick = () => auth.signOut();
 document.getElementById('filtro-mes').onchange = () => cargarDatos(auth.currentUser.uid);
+if (localStorage.getItem('modo-oscuro') === 'activado') document.body.classList.add('dark-mode');

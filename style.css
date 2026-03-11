@@ -8,27 +8,31 @@ body.dark-mode {
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: 'Plus Jakarta Sans', sans-serif; -webkit-tap-highlight-color: transparent; }
 body { background: var(--bg); color: var(--text); padding: 15px; transition: background 0.3s; }
 .app-container { max-width: 450px; margin: 0 auto; }
-.card { background: var(--card); border-radius: 28px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); }
+.card { background: var(--card); border-radius: 28px; padding: 20px; margin-bottom: 15px; border: 1px solid var(--border); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.05); position: relative; }
 
 .header-flex { display: flex; justify-content: space-between; align-items: center; }
-.btn-add { background: var(--text); color: var(--card); border: none; width: 30px; height: 30px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.btn-add { background: var(--text); color: var(--card); border: none; width: 35px; height: 35px; border-radius: 50%; font-size: 1.2rem; cursor: pointer; display: flex; align-items: center; justify-content: center; font-weight: bold; }
 
-.fixed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; }
+.fixed-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-top: 10px; }
 .btn-fixed { 
-    background: var(--bg); border: 1px solid var(--border); padding: 18px 5px; 
+    background: var(--bg); border: 1px solid var(--border); padding: 20px 5px; 
     border-radius: 22px; cursor: pointer; color: var(--text); 
-    display: flex; flex-direction: column; align-items: center; font-size: 0.7rem; font-weight: 600;
-    transition: transform 0.1s;
+    display: flex; flex-direction: column; align-items: center; font-size: 0.75rem; font-weight: 600;
+    transition: transform 0.1s; width: 100%;
 }
 .btn-fixed:active { transform: scale(0.95); background: var(--border); }
-.btn-fixed b { font-size: 1.6rem; margin-bottom: 5px; }
+.btn-fixed b { font-size: 1.8rem; margin-bottom: 5px; }
 
 .balance-card { text-align: center; }
-#balance-total { font-size: 3.2rem; font-weight: 800; color: var(--accent); letter-spacing: -2px; }
+#balance-total { font-size: 3.2rem; font-weight: 800; color: var(--accent); letter-spacing: -2px; margin: 10px 0; }
 .resumen-row { display: flex; justify-content: space-around; margin-top: 15px; border-top: 1px solid var(--border); padding-top: 15px; }
 
-.input-lg { padding: 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; margin-bottom: 12px; font-size: 1rem; }
-.btn-principal { width: 100%; background: var(--accent); color: white; border: none; padding: 18px; border-radius: 18px; font-weight: 800; cursor: pointer; }
+.input-lg { padding: 16px; border-radius: 16px; border: 1px solid var(--border); background: var(--bg); color: var(--text); width: 100%; margin-bottom: 12px; font-size: 1rem; outline: none; }
+.btn-principal { width: 100%; background: var(--accent); color: white; border: none; padding: 18px; border-radius: 18px; font-weight: 800; cursor: pointer; font-size: 1rem; }
 
 .item { display: flex; justify-content: space-between; padding: 16px; background: var(--card); border-radius: 20px; margin-bottom: 10px; border: 1px solid var(--border); align-items: center; }
+.monto-gasto { color: var(--danger); font-weight: bold; }
+.monto-ingreso { color: var(--accent); font-weight: bold; }
 .toggle-theme { position: absolute; top: 15px; right: 20px; background: none; border: none; cursor: pointer; font-size: 1.3rem; }
+.top-nav { display: flex; justify-content: space-between; margin-bottom: 15px; }
+#btn-logout { background: none; border: 1px solid var(--border); padding: 5px 10px; border-radius: 10px; color: var(--text); cursor: pointer; }

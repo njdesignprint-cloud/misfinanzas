@@ -1,0 +1,16 @@
+{
+  "short_name": "FinanzasPro",
+  "name": "Finanzas Elite Pro",
+  "icons": [
+    {
+      "src": "https://cdn-icons-png.flaticon.com/512/10384/10384161.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "start_url": "index.html",
+  "display": "standalone",
+  "theme_color": "#10B981",
+  "background_color": "#F8FAFC"
+}
