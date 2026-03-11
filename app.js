@@ -12,20 +12,18 @@ const auth = firebase.auth();
 const db = firebase.firestore();
 let grafico = null;
 
-// Diccionario inteligente de iconos
 const ICONOS = {
     renta: '🏠', carro: '🚗', celular: '📱', seguro: '🛡️', medico: '🏥', 
     mercado: '🛒', mia: '👧', colegio: '🎓', familia: '👨‍👩‍👧', gym: '🏋️',
-    luz: '💡', agua: '💧', internet: '🌐', suscripcion: '📺', comida: '🍕'
+    luz: '💡', agua: '💧', internet: '🌐', netflix: '📺', spotify: '🎵'
 };
 
 function getIcon(nombre) {
     const n = nombre.toLowerCase();
     for (let key in ICONOS) { if (n.includes(key)) return ICONOS[key]; }
-    return '💰'; // Icono por defecto
+    return '💰';
 }
 
-// Lista inicial (se guarda en localStorage para que puedas agregar más)
 let misGastosFijos = JSON.parse(localStorage.getItem('misGastosFijos')) || [
     'Renta', 'Carro', 'Celulares', 'Seguro Carro', 'Seguro Medico', 'Mercado', 'Mia', 'Colegio', 'Familia'
 ];
@@ -41,24 +39,34 @@ auth.onAuthStateChanged(user => {
     document.getElementById('app-section').style.display = user ? 'block' : 'none';
 });
 
-// RENDERIZAR BOTONES
 function renderFijos() {
     const grid = document.getElementById('fixed-grid');
     grid.innerHTML = '';
     misGastosFijos.forEach(nombre => {
-        const btn = document.createElement('button');
-        btn.className = 'btn-fixed';
-        btn.innerHTML = `<b>${getIcon(nombre)}</b><span>${nombre}</span>`;
-        btn.onclick = () => procesarPago(nombre);
-        // Click derecho o mantener presionado para eliminar el botón
-        btn.oncontextmenu = (e) => { e.preventDefault(); eliminarBotonFijo(nombre); };
-        grid.appendChild(btn);
+        const container = document.createElement('div');
+        container.className = 'btn-fixed-container';
+        
+        container.innerHTML = `
+            <button class="delete-fijo" onclick="eliminarGastoLista('${nombre}')">✕</button>
+            <button class="btn-fixed" onclick="procesarPago('${nombre}')">
+                <b>${getIcon(nombre)}</b>
+                <span>${nombre}</span>
+            </button>
+        `;
+        grid.appendChild(container);
     });
 }
 
-// AGREGAR NUEVO TIPO DE GASTO
+window.eliminarGastoLista = (nombre) => {
+    if(confirm(`¿Eliminar "${nombre}" de la lista de gastos fijos?`)) {
+        misGastosFijos = misGastosFijos.filter(n => n !== nombre);
+        localStorage.setItem('misGastosFijos', JSON.stringify(misGastosFijos));
+        renderFijos();
+    }
+};
+
 document.getElementById('btn-nuevo-fijo').onclick = () => {
-    const nuevo = prompt("Nombre del nuevo gasto fijo:");
+    const nuevo = prompt("Nombre del nuevo gasto (Ej: Gimnasio, Netflix...):");
     if(nuevo && !misGastosFijos.includes(nuevo)) {
         misGastosFijos.push(nuevo);
         localStorage.setItem('misGastosFijos', JSON.stringify(misGastosFijos));
@@ -66,38 +74,31 @@ document.getElementById('btn-nuevo-fijo').onclick = () => {
     }
 };
 
-function eliminarBotonFijo(nombre) {
-    if(confirm(`¿Eliminar el acceso directo de "${nombre}"?`)) {
-        misGastosFijos = misGastosFijos.filter(n => n !== nombre);
-        localStorage.setItem('misGastosFijos', JSON.stringify(misGastosFijos));
-        renderFijos();
-    }
-}
-
-// PAGAR CON UN CLIC + INTRODUCIR DATOS
 async function procesarPago(nombre) {
     const montoPrevio = localStorage.getItem(`monto_${nombre}`) || "";
     const monto = prompt(`Monto a pagar para ${nombre}:`, montoPrevio);
     
     if (monto && !isNaN(monto)) {
-        localStorage.setItem(`monto_${nombre}`, monto); // Recuerda el monto para la próxima vez
+        localStorage.setItem(`monto_${nombre}`, monto);
         
         await db.collection("transacciones").add({
             uid: auth.currentUser.uid, monto: Number(monto), tipo: 'gasto', categoria: nombre,
             fecha: firebase.firestore.FieldValue.serverTimestamp()
         });
 
-        if(confirm("¿Quieres que tu celular te avise el próximo mes?")) {
-            const diaPago = prompt("¿Qué día del mes vence este pago? (1-31):", new Date().getDate());
+        if(confirm("¿Agendar aviso en tu calendario? (Recibirás notificación y email)")) {
+            const diaVence = prompt("¿Qué día del mes vence? (1-31):", "1");
             const hoy = new Date();
-            const prox = new Date(hoy.getFullYear(), hoy.getMonth() + 1, parseInt(diaPago), 10, 0);
+            const prox = new Date(hoy.getFullYear(), hoy.getMonth() + 1, parseInt(diaVence), 10, 0);
+            
+            // Formato ISO para Google Calendar
             const iso = prox.toISOString().replace(/-|:|\.\d\d\d/g, "");
-            window.open(`https://www.google.com/calendar/render?action=TEMPLATE&text=PAGAR+${nombre.toUpperCase()}&dates=${iso}/${iso}&details=Monto:+$${monto}&sf=true&output=xml`, '_blank');
+            const url = `https://www.google.com/calendar/render?action=TEMPLATE&text=PAGAR+${nombre.toUpperCase()}&dates=${iso}/${iso}&details=Recordatorio+de+pago+$${monto}&sf=true&output=xml`;
+            window.open(url, '_blank');
         }
     }
 }
 
-// CARGAR DATOS Y GRÁFICO
 function cargarDatos(uid) {
     const filtro = document.getElementById('filtro-mes');
     if(!filtro.value) filtro.value = new Date().toISOString().slice(0, 7);
@@ -113,12 +114,12 @@ function cargarDatos(uid) {
             const d = doc.data();
             if(d.tipo === 'ingreso') tIn += d.monto; else tGa += d.monto;
             dG[d.categoria] = (dG[d.categoria] || 0) + d.monto;
-            html += `<div class="item"><span><b>${d.categoria}</b><br><small>$${d.monto}</small></span>
-            <button onclick="eliminarDoc('${doc.id}')" style="border:none; background:none;">🗑️</button></div>`;
+            html += `<div class="item"><span><b>${d.categoria}</b><br><small>$${d.monto.toFixed(2)}</small></span>
+            <button onclick="eliminarDoc('${doc.id}')" style="border:none; background:none; cursor:pointer; font-size:1.2rem;">🗑️</button></div>`;
         });
         document.getElementById('balance-total').innerText = `$${(tIn - tGa).toFixed(2)}`;
-        document.getElementById('res-ingresos').innerText = `+$${tIn}`;
-        document.getElementById('res-gastos').innerText = `-$${tGa}`;
+        document.getElementById('res-ingresos').innerText = `+$${tIn.toFixed(0)}`;
+        document.getElementById('res-gastos').innerText = `-$${tGa.toFixed(0)}`;
         document.getElementById('lista-movimientos').innerHTML = html;
         actualizarGrafico(dG);
     });
@@ -131,7 +132,7 @@ document.getElementById('btn-guardar').onclick = async () => {
     document.getElementById('monto').value = ""; document.getElementById('categoria').value = "";
 };
 
-window.eliminarDoc = (id) => confirm("¿Eliminar?") && db.collection("transacciones").doc(id).delete();
+window.eliminarDoc = (id) => confirm("¿Eliminar registro?") && db.collection("transacciones").doc(id).delete();
 
 document.getElementById('btn-dark-mode').onclick = () => {
     document.body.classList.toggle('dark-mode');
